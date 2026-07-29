@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Evan Lusky | Senior Software Engineer</title>
+  <meta name="description" content="Evan Lusky. Senior software engineer in Nashville, TN. Resume, skills, and projects, plus a small pixel art ship deck you can walk around." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand">
+      <h1 class="pixel">EVAN LUSKY</h1>
+      <p class="tagline">Senior software engineer. Nashville, TN.</p>
+    </div>
+    <nav class="site-nav pixel" aria-label="Site">
+      <a href="#/about">About</a>
+      <a href="#/resume">Resume</a>
+      <a href="#/skills">Skills</a>
+      <a href="#/projects">Projects</a>
+      <a href="#/contact">Contact</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="deck-wrap" aria-label="Interactive deck">
+      <div id="deck"></div>
+      <p class="deck-hint">
+        <span class="pixel key-hint">WASD</span> / <span class="pixel key-hint">arrows</span> to walk,
+        or click where you want to go. Walk up to something to open it.
+      </p>
+    </section>
+
+    <!-- TODO: all section copy below is placeholder. Real copy gets a write-as-evan pass before launch. -->
+
+    <section class="panel" data-route="about" hidden>
+      <h2 class="pixel">About</h2>
+      <p>[Placeholder] A few paragraphs about who I am, what I build, and what I am looking for.</p>
+    </section>
+
+    <section class="panel" data-route="resume" hidden>
+      <h2 class="pixel">Resume</h2>
+      <p>[Placeholder] Short career summary here.</p>
+      <p><a class="btn pixel" href="/resume.pdf">Download PDF</a></p>
+      <!-- TODO: drop the real resume at public/resume.pdf -->
+    </section>
+
+    <section class="panel" data-route="skills" hidden>
+      <h2 class="pixel">Skills</h2>
+      <p>[Placeholder] Skills list goes here, grouped and honest.</p>
+    </section>
+
+    <section class="panel" data-route="projects" hidden>
+      <h2 class="pixel">Projects</h2>
+      <p>[Placeholder] Selected projects with short writeups.</p>
+    </section>
+
+    <section class="panel" data-route="contact" hidden>
+      <h2 class="pixel">Contact</h2>
+      <ul class="contact-list">
+        <li><a href="https://github.com/ewlusky">GitHub</a></li>
+        <li><a href="#">LinkedIn</a> <!-- TODO: real LinkedIn URL --></li>
+        <li><a href="#">Email</a> <!-- TODO: decide whether to publish an address or use a form --></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>No trackers, no cookies. Built with Phaser and Vite.</p>
+    <!-- TODO: asset credits go here once real art lands (LimeZu credit is required by their license) -->
+  </footer>
+
+  <script type="module" src="/src/main.ts"></script>
+</body>
+</html>

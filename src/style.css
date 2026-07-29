@@ -1,0 +1,197 @@
+:root {
+  --bg: #0a0d18;
+  --panel: #121629;
+  --line: #2a3252;
+  --text: #d8dcf0;
+  --dim: #8b92b8;
+  --accent: #57e6c6;
+  --accent2: #ffb454;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--bg);
+}
+
+body {
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 0 20px 60px;
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.6;
+}
+
+.pixel {
+  font-family: "Press Start 2P", monospace;
+}
+
+a {
+  color: var(--accent);
+}
+
+a:hover {
+  color: var(--accent2);
+}
+
+/* Header */
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 36px 0 20px;
+  border-bottom: 2px solid var(--line);
+  margin-bottom: 24px;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 22px;
+  letter-spacing: 2px;
+  color: var(--accent);
+  text-shadow: 3px 3px 0 #05070d;
+}
+
+.tagline {
+  margin: 10px 0 0;
+  color: var(--dim);
+}
+
+.site-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  font-size: 10px;
+}
+
+.site-nav a {
+  padding: 9px 10px;
+  text-decoration: none;
+  color: var(--text);
+  border: 2px solid var(--line);
+  background: var(--panel);
+  box-shadow: 2px 2px 0 #05070d;
+}
+
+.site-nav a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0 #05070d;
+}
+
+.site-nav a[aria-current="true"] {
+  border-color: var(--accent2);
+  color: var(--accent2);
+}
+
+/* Deck (game) */
+
+.deck-wrap {
+  margin: 0 auto 28px;
+  max-width: 800px;
+}
+
+#deck {
+  position: relative;
+  aspect-ratio: 400 / 224;
+  border: 3px solid var(--line);
+  box-shadow: 0 0 0 3px #05070d, 0 12px 40px rgba(0, 0, 0, 0.5);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+#deck canvas {
+  image-rendering: pixelated;
+  display: block;
+}
+
+/* subtle CRT scanlines over the deck */
+#deck::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0px,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.08) 3px
+  );
+}
+
+.deck-hint {
+  margin: 10px 2px 0;
+  color: var(--dim);
+  font-size: 14px;
+  text-align: center;
+}
+
+.key-hint {
+  font-size: 9px;
+  color: var(--accent);
+}
+
+/* Content panels */
+
+.panel {
+  background: var(--panel);
+  border: 2px solid var(--line);
+  box-shadow: 4px 4px 0 #05070d;
+  padding: 20px 24px 24px;
+  margin-bottom: 24px;
+  scroll-margin-top: 16px;
+}
+
+.panel h2 {
+  font-size: 14px;
+  color: var(--accent2);
+  margin: 0 0 14px;
+}
+
+.btn {
+  display: inline-block;
+  font-size: 10px;
+  padding: 10px 14px;
+  text-decoration: none;
+  color: var(--bg);
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  box-shadow: 3px 3px 0 #05070d;
+}
+
+.btn:hover {
+  background: var(--accent2);
+  border-color: var(--accent2);
+  color: var(--bg);
+}
+
+.contact-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+/* Footer */
+
+.site-footer {
+  border-top: 2px solid var(--line);
+  padding-top: 16px;
+  color: var(--dim);
+  font-size: 13px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site-nav a:hover {
+    transform: none;
+  }
+}
