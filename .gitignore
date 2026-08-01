@@ -2,3 +2,10 @@ node_modules/
 dist/
 *.local
 .DS_Store
+
+# working art sources (licensed packs; only final exports belong in public/assets)
+art-src/
+
+# local planning files, not site material
+AGENTS.md
+*.docx

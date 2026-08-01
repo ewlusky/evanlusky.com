@@ -1,63 +1,82 @@
 import Phaser from 'phaser';
 import { go } from '../router';
-import { HOTSPOTS, type Hotspot } from './hotspots';
+import { DECOR, DOOR, HOTSPOTS, ROOM, ROOM_COLLIDERS, SPAWN, type Hotspot } from './hotspots';
 
-const ROOM_W = 400;
-const ROOM_H = 224;
-const WALL = 16;
-const SPEED = 85;
+const CANVAS_W = 400;
+const CANVAS_H = 224;
+const SPEED = 78;
 const ZONE_PAD = 12;
 
 type Dir = 'down' | 'left' | 'right' | 'up';
-const DIR_ROW: Record<Dir, number> = { down: 0, left: 1, right: 2, up: 3 };
+
+/**
+ * The LimeZu generator sheet is 56 columns per row and its direction order is
+ * RIGHT, UP, LEFT, DOWN (not the usual down-first). Walk = row 2, idle = row 1,
+ * 6 frames per direction.
+ */
+const EVAN = {
+  cols: 56,
+  frames: 6,
+  idleRow: 1,
+  walkRow: 2,
+  dirOffset: { right: 0, up: 1, left: 2, down: 3 } as Record<Dir, number>,
+};
 
 export class DeckScene extends Phaser.Scene {
   private player!: Phaser.Physics.Arcade.Sprite;
   private keys!: Record<'W' | 'A' | 'S' | 'D' | 'UP' | 'DOWN' | 'LEFT' | 'RIGHT', Phaser.Input.Keyboard.Key>;
   private moveTarget: Phaser.Math.Vector2 | null = null;
   private facing: Dir = 'down';
+  private starsFar!: Phaser.GameObjects.TileSprite;
+  private starsNear!: Phaser.GameObjects.TileSprite;
+  private door?: Phaser.GameObjects.Sprite;
+  private doorOpen = false;
   private sparks!: Phaser.GameObjects.Particles.ParticleEmitter;
-  private props = new Map<string, Phaser.GameObjects.Image>();
+  private props = new Map<string, Phaser.GameObjects.Image | Phaser.GameObjects.Sprite>();
   private labels = new Map<string, Phaser.GameObjects.Text>();
   private zoneRects = new Map<string, Phaser.Geom.Rectangle>();
   private engaged = new Set<string>();
+  private inCutscene = false;
+  private lastTriggerAt = 0;
 
   constructor() {
     super('deck');
   }
 
+  preload(): void {
+    this.load.image('stars_far', 'assets/stars_far.png');
+    this.load.image('stars_near', 'assets/stars_near.png');
+    this.load.image('room_under', 'assets/room_under.png');
+    this.load.image('room_mid', 'assets/room_mid.png');
+    this.load.image('room_over', 'assets/room_over.png');
+    this.load.spritesheet('evan', 'assets/evan.png', { frameWidth: 16, frameHeight: 32 });
+    this.load.spritesheet('screens', 'assets/screens.png', { frameWidth: 64, frameHeight: 48 });
+    this.load.spritesheet('server', 'assets/server.png', { frameWidth: 16, frameHeight: 48 });
+    this.load.spritesheet('door', 'assets/door.png', { frameWidth: 32, frameHeight: 32 });
+    this.load.spritesheet('guitar_summon', 'assets/guitar_summon.png', { frameWidth: 92, frameHeight: 92 });
+    this.load.spritesheet('guitar_play', 'assets/guitar_play.png', { frameWidth: 92, frameHeight: 92 });
+  }
+
   create(): void {
-    this.makeTextures();
+    this.makeGeneratedTextures();
+    this.makeAnims();
+    this.buildSpace();
     this.buildRoom();
     this.buildPlayer();
     this.buildHotspots();
     this.bindInput();
   }
 
-  private makeTextures(): void {
+  private makeGeneratedTextures(): void {
     const g = this.add.graphics();
 
-    // floor tile
-    g.fillStyle(0x10142a).fillRect(0, 0, 16, 16);
-    g.fillStyle(0x0c1022).fillRect(15, 0, 1, 16).fillRect(0, 15, 16, 1);
-    g.fillStyle(0x161c38).fillRect(3, 3, 1, 1);
-    g.generateTexture('floor', 16, 16);
-    g.clear();
-
-    // wall tile
-    g.fillStyle(0x232b52).fillRect(0, 0, 16, 16);
-    g.fillStyle(0x2f3a6e).fillRect(0, 0, 16, 2);
-    g.fillStyle(0x141a36).fillRect(0, 12, 16, 4);
-    g.generateTexture('wall', 16, 16);
-    g.clear();
-
-    // spark particle
     g.fillStyle(0xffe66e).fillRect(0, 0, 2, 2);
     g.generateTexture('spark', 2, 2);
     g.clear();
 
-    // props
+    // placeholder props for hotspots without pack art
     for (const h of HOTSPOTS) {
+      if (h.texture) continue;
       const base = Phaser.Display.Color.ValueToColor(h.color);
       const dark = base.clone().darken(45).color;
       const mid = base.clone().darken(20).color;
@@ -75,122 +94,82 @@ export class DeckScene extends Phaser.Scene {
     }
 
     g.destroy();
-
-    this.makePlayerTexture();
   }
 
-  /**
-   * Placeholder pixel-Evan: 16x24 frames, 4 directions x 4 walk frames on one
-   * canvas. The real Aseprite/LimeZu sheet replaces this texture key and the
-   * rest of the scene never knows the difference.
-   */
-  private makePlayerTexture(): void {
-    const tex = this.textures.createCanvas('player', 64, 96);
-    if (!tex) return;
-    const ctx = tex.getContext();
-
-    const SKIN = '#e8b89a';
-    const SKIN_HI = '#f6d0b8';
-    const BEARD = '#7a5340';
-    const SHIRT = '#4a7dde';
-    const OVERSHIRT = '#2b4a8f';
-    const JEANS = '#3a4670';
-    const SHOES = '#1c2030';
-    const EYES = '#1a1d2c';
-
-    (['down', 'left', 'right', 'up'] as Dir[]).forEach((dir) => {
-      const row = DIR_ROW[dir];
-      for (let f = 0; f < 4; f++) {
-        const ox = f * 16;
-        const oy = row * 24;
-        const bob = f === 1 || f === 3 ? 1 : 0;
-
-        // head (bald, with a top highlight)
-        ctx.fillStyle = SKIN;
-        ctx.fillRect(ox + 5, oy + 1 + bob, 6, 6);
-        ctx.fillStyle = SKIN_HI;
-        ctx.fillRect(ox + 6, oy + 1 + bob, 4, 1);
-
-        if (dir !== 'up') {
-          ctx.fillStyle = BEARD;
-          ctx.fillRect(ox + 5, oy + 5 + bob, 6, 2);
-          ctx.fillStyle = EYES;
-          if (dir === 'down') {
-            ctx.fillRect(ox + 6, oy + 3 + bob, 1, 1);
-            ctx.fillRect(ox + 9, oy + 3 + bob, 1, 1);
-          } else if (dir === 'left') {
-            ctx.fillRect(ox + 5, oy + 3 + bob, 1, 1);
-          } else {
-            ctx.fillRect(ox + 10, oy + 3 + bob, 1, 1);
-          }
-        }
-
-        // torso: open overshirt with shirt underneath (back view is all overshirt)
-        ctx.fillStyle = OVERSHIRT;
-        ctx.fillRect(ox + 3, oy + 8 + bob, 10, 7);
-        if (dir !== 'up') {
-          ctx.fillStyle = SHIRT;
-          ctx.fillRect(ox + 6, oy + 8 + bob, 4, 6);
-        }
-
-        // jeans
-        ctx.fillStyle = JEANS;
-        ctx.fillRect(ox + 4, oy + 15 + bob, 8, 5);
-
-        // feet: alternate steps on frames 1 and 3
-        ctx.fillStyle = SHOES;
-        if (f === 1) {
-          ctx.fillRect(ox + 4, oy + 21, 3, 3);
-          ctx.fillRect(ox + 9, oy + 20, 3, 2);
-        } else if (f === 3) {
-          ctx.fillRect(ox + 4, oy + 20, 3, 2);
-          ctx.fillRect(ox + 9, oy + 21, 3, 3);
-        } else {
-          ctx.fillRect(ox + 4, oy + 20, 3, 3);
-          ctx.fillRect(ox + 9, oy + 20, 3, 3);
-        }
-      }
-    });
-
-    tex.refresh();
-
-    for (let i = 0; i < 16; i++) {
-      const col = i % 4;
-      const row = Math.floor(i / 4);
-      tex.add(i, 0, col * 16, row * 24, 16, 24);
-    }
-
-    (['down', 'left', 'right', 'up'] as Dir[]).forEach((dir) => {
-      const row = DIR_ROW[dir];
+  private makeAnims(): void {
+    (['right', 'up', 'left', 'down'] as Dir[]).forEach((dir) => {
+      const walkStart = EVAN.walkRow * EVAN.cols + EVAN.dirOffset[dir] * EVAN.frames;
+      const idleStart = EVAN.idleRow * EVAN.cols + EVAN.dirOffset[dir] * EVAN.frames;
       this.anims.create({
         key: `walk-${dir}`,
-        frames: [0, 1, 2, 3].map((f) => ({ key: 'player', frame: row * 4 + f })),
-        frameRate: 8,
+        frames: this.anims.generateFrameNumbers('evan', { start: walkStart, end: walkStart + EVAN.frames - 1 }),
+        frameRate: 10,
         repeat: -1,
       });
       this.anims.create({
         key: `idle-${dir}`,
-        frames: [{ key: 'player', frame: row * 4 }],
+        frames: this.anims.generateFrameNumbers('evan', { start: idleStart, end: idleStart + EVAN.frames - 1 }),
+        frameRate: 4,
+        repeat: -1,
       });
+    });
+
+    this.anims.create({
+      key: 'screens-flicker',
+      frames: this.anims.generateFrameNumbers('screens', { start: 0, end: 10 }),
+      frameRate: 6,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'server-blink',
+      frames: this.anims.generateFrameNumbers('server', { start: 0, end: 2 }),
+      frameRate: 2,
+      repeat: -1,
+    });
+    this.anims.create({
+      key: 'door-open',
+      frames: this.anims.generateFrameNumbers('door', { start: 0, end: 13 }),
+      frameRate: 24,
+    });
+    this.anims.create({
+      key: 'guitar-summon',
+      frames: this.anims.generateFrameNumbers('guitar_summon', { start: 0, end: 16 }),
+      frameRate: 12,
+    });
+    this.anims.create({
+      key: 'guitar-riff',
+      frames: this.anims.generateFrameNumbers('guitar_play', { start: 0, end: 16 }),
+      frameRate: 12,
+      repeat: 1,
     });
   }
 
-  private buildRoom(): void {
-    this.add.tileSprite(0, 0, ROOM_W, ROOM_H, 'floor').setOrigin(0);
-    this.add.tileSprite(0, 0, ROOM_W, WALL, 'wall').setOrigin(0);
-    this.add.tileSprite(0, ROOM_H - WALL, ROOM_W, WALL, 'wall').setOrigin(0);
-    this.add.tileSprite(0, WALL, WALL, ROOM_H - 2 * WALL, 'wall').setOrigin(0);
-    this.add.tileSprite(ROOM_W - WALL, WALL, WALL, ROOM_H - 2 * WALL, 'wall').setOrigin(0);
+  private buildSpace(): void {
+    this.starsFar = this.add.tileSprite(0, 0, CANVAS_W, CANVAS_H, 'stars_far').setOrigin(0).setDepth(-10);
+    this.starsNear = this.add.tileSprite(0, 0, CANVAS_W, CANVAS_H, 'stars_near').setOrigin(0).setDepth(-9);
+  }
 
-    this.physics.world.setBounds(WALL, WALL, ROOM_W - 2 * WALL, ROOM_H - 2 * WALL);
+  private buildRoom(): void {
+    this.add.image(ROOM.x, ROOM.y, 'room_under').setOrigin(0).setDepth(0);
+    this.add.image(ROOM.x, ROOM.y, 'room_mid').setOrigin(0).setDepth(900);
+    this.add.image(ROOM.x, ROOM.y, 'room_over').setOrigin(0).setDepth(950);
+
+    for (const d of DECOR) {
+      this.add.sprite(d.x, d.y, d.key).setOrigin(0).setDepth(2).play(`${d.key}-flicker`);
+    }
+
+    this.door = this.add.sprite(DOOR.x, DOOR.y, 'door', 0).setDepth(3);
+
+    const b = ROOM.bounds;
+    this.physics.world.setBounds(b.x, b.y, b.w, b.h);
   }
 
   private buildPlayer(): void {
-    this.player = this.physics.add.sprite(ROOM_W / 2, 132, 'player', 0);
+    this.player = this.physics.add.sprite(SPAWN.x, SPAWN.y, 'evan', EVAN.idleRow * EVAN.cols + EVAN.dirOffset.down * EVAN.frames);
     this.player.setCollideWorldBounds(true);
-    // collide from the feet, so the sprite can overlap walls/props a little
-    this.player.body!.setSize(12, 8);
-    this.player.body!.setOffset(2, 16);
+    // the art sits at the bottom of the 16x32 cell; collide from the feet
+    this.player.body!.setSize(10, 6);
+    this.player.body!.setOffset(3, 26);
     this.player.anims.play('idle-down');
   }
 
@@ -205,26 +184,42 @@ export class DeckScene extends Phaser.Scene {
       quantity: 1,
       emitting: false,
     });
+    this.sparks.setDepth(1500);
+
+    for (const r of ROOM_COLLIDERS) {
+      const block = this.add.rectangle(r.x + r.w / 2, r.y + r.h / 2, r.w, r.h).setVisible(false);
+      this.physics.add.existing(block, true);
+      solids.add(block);
+    }
 
     for (const h of HOTSPOTS) {
       const cx = h.x + h.w / 2;
       const cy = h.y + h.h / 2;
 
-      const prop = solids.create(cx, cy, `prop-${h.id}`) as Phaser.GameObjects.Image;
-      this.props.set(h.id, prop);
+      // the console is the room's own desk: no extra sprite, no extra solid
+      if (h.id !== 'console') {
+        let prop: Phaser.GameObjects.Image | Phaser.GameObjects.Sprite;
+        if (h.texture) {
+          const sprite = this.add.sprite(cx, cy, h.texture);
+          if (h.frameRate) sprite.play(`${h.texture}-blink`);
+          prop = sprite;
+        } else {
+          prop = this.add.image(cx, cy, `prop-${h.id}`);
+        }
+        prop.setDepth(h.y + h.h);
+        this.props.set(h.id, prop);
 
-      if (h.pulse) {
-        this.tweens.add({
-          targets: prop,
-          alpha: { from: 1, to: 0.7 },
-          duration: 750,
-          yoyo: true,
-          repeat: -1,
-        });
+        const solid = this.add.rectangle(cx, cy + 2, h.w, Math.max(6, h.h - 8)).setVisible(false);
+        this.physics.add.existing(solid, true);
+        solids.add(solid);
+
+        if (h.pulse) {
+          this.tweens.add({ targets: prop, alpha: { from: 1, to: 0.72 }, duration: 750, yoyo: true, repeat: -1 });
+        }
       }
 
       const label = this.add
-        .text(cx, h.y - 3, h.label, {
+        .text(cx, h.y - 4, h.label, {
           fontFamily: 'monospace',
           fontSize: '8px',
           color: '#d8dcf0',
@@ -232,15 +227,12 @@ export class DeckScene extends Phaser.Scene {
           padding: { x: 2, y: 1 },
         })
         .setOrigin(0.5, 1)
-        .setResolution(3);
+        .setResolution(3)
+        .setDepth(1600);
       this.labels.set(h.id, label);
 
-      const rect = new Phaser.Geom.Rectangle(
-        h.x - ZONE_PAD,
-        h.y - ZONE_PAD,
-        h.w + ZONE_PAD * 2,
-        h.h + ZONE_PAD * 2,
-      );
+      const pad = h.zonePad ?? ZONE_PAD;
+      const rect = new Phaser.Geom.Rectangle(h.x - pad, h.y - pad, h.w + pad * 2, h.h + pad * 2);
       this.zoneRects.set(h.id, rect);
 
       const zone = this.add.zone(rect.x, rect.y, rect.width, rect.height).setOrigin(0);
@@ -252,7 +244,9 @@ export class DeckScene extends Phaser.Scene {
         this.time.addEvent({
           delay: 900,
           loop: true,
-          callback: () => this.sparks.explode(3, cx + Phaser.Math.Between(-6, 6), cy - 4),
+          callback: () => {
+            if (!this.inCutscene) this.sparks.explode(3, cx + Phaser.Math.Between(-6, 6), cy - 4);
+          },
         });
       }
     }
@@ -269,8 +263,8 @@ export class DeckScene extends Phaser.Scene {
     const K = Phaser.Input.Keyboard.KeyCodes;
     const codes = [K.W, K.A, K.S, K.D, K.UP, K.DOWN, K.LEFT, K.RIGHT];
 
-    // no captures by default: keys move the character, but only capture (and
-    // stop the page from scrolling) while the cursor is over the canvas
+    // captures only while the cursor is over the canvas, so arrow keys still
+    // scroll the page everywhere else
     this.keys = kb.addKeys(
       { W: K.W, A: K.A, S: K.S, D: K.D, UP: K.UP, DOWN: K.DOWN, LEFT: K.LEFT, RIGHT: K.RIGHT },
       false,
@@ -281,29 +275,29 @@ export class DeckScene extends Phaser.Scene {
     canvas.addEventListener('mouseleave', () => kb.removeCapture(codes));
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.inCutscene) return;
+      const b = ROOM.bounds;
       this.moveTarget = new Phaser.Math.Vector2(
-        Phaser.Math.Clamp(pointer.worldX, WALL + 6, ROOM_W - WALL - 6),
-        Phaser.Math.Clamp(pointer.worldY, WALL + 8, ROOM_H - WALL - 4),
+        Phaser.Math.Clamp(pointer.worldX, b.x + 6, b.x + b.w - 6),
+        Phaser.Math.Clamp(pointer.worldY, b.y + 8, b.y + b.h - 4),
       );
     });
   }
 
   private trigger(h: Hotspot): void {
-    if (this.engaged.has(h.id)) return;
+    if (this.inCutscene || this.engaged.has(h.id)) return;
+    // adjacent zones can graze each other; one route per moment
+    if (this.time.now - this.lastTriggerAt < 700) return;
+    this.lastTriggerAt = this.time.now;
     this.engaged.add(h.id);
 
-    const prop = this.props.get(h.id)!;
-    const cx = prop.x;
-    const cy = prop.y;
+    const cx = h.x + h.w / 2;
+    const cy = h.y + h.h / 2;
+    const prop = this.props.get(h.id);
 
-    this.tweens.add({
-      targets: prop,
-      scaleX: 1.12,
-      scaleY: 1.12,
-      duration: 90,
-      yoyo: true,
-      repeat: 1,
-    });
+    if (prop) {
+      this.tweens.add({ targets: prop, scaleX: 1.12, scaleY: 1.12, duration: 90, yoyo: true, repeat: 1 });
+    }
 
     if (h.sparking) {
       this.sparks.explode(26, cx, cy - 4);
@@ -314,13 +308,63 @@ export class DeckScene extends Phaser.Scene {
       return;
     }
 
+    if (h.cutscene) {
+      this.playGuitarCutscene(h);
+      return;
+    }
+
     this.sparks.explode(10, cx, cy);
     if (h.route) {
       this.time.delayedCall(450, () => go(h.route!));
     }
   }
 
-  update(): void {
+  private playGuitarCutscene(h: Hotspot): void {
+    this.inCutscene = true;
+    this.player.setVelocity(0);
+    this.moveTarget = null;
+
+    const dim = this.add.rectangle(CANVAS_W / 2, CANVAS_H / 2, CANVAS_W, CANVAS_H, 0x05070d, 0).setDepth(1990);
+    const star = this.add.sprite(CANVAS_W / 2, CANVAS_H / 2 + 6, 'guitar_summon', 0).setScale(2).setDepth(2000);
+    this.tweens.add({ targets: dim, fillAlpha: 0.75, duration: 250 });
+
+    let finished = false;
+    const finish = () => {
+      if (finished) return;
+      finished = true;
+      this.tweens.add({
+        targets: [dim, star],
+        alpha: 0,
+        duration: 250,
+        onComplete: () => {
+          dim.destroy();
+          star.destroy();
+          this.inCutscene = false;
+          if (h.route) go(h.route);
+        },
+      });
+    };
+
+    star.play('guitar-summon');
+    star.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      if (finished) return;
+      star.play('guitar-riff');
+      star.once(Phaser.Animations.Events.ANIMATION_COMPLETE, finish);
+    });
+
+    // click or any key skips
+    this.input.once('pointerdown', finish);
+    this.input.keyboard!.once('keydown', finish);
+    this.time.delayedCall(6500, finish);
+  }
+
+  update(_time: number, delta: number): void {
+    const dt = delta / 1000;
+    this.starsFar.tilePositionX += 3 * dt;
+    this.starsNear.tilePositionX += 8 * dt;
+
+    if (this.inCutscene) return;
+
     const k = this.keys;
     const left = k.A.isDown || k.LEFT.isDown;
     const right = k.D.isDown || k.RIGHT.isDown;
@@ -339,12 +383,7 @@ export class DeckScene extends Phaser.Scene {
       vy = (vy / len) * SPEED;
       this.player.setVelocity(vx, vy);
     } else if (this.moveTarget) {
-      const dist = Phaser.Math.Distance.Between(
-        this.player.x,
-        this.player.y,
-        this.moveTarget.x,
-        this.moveTarget.y,
-      );
+      const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.moveTarget.x, this.moveTarget.y);
       if (dist < 3) {
         this.moveTarget = null;
         this.player.setVelocity(0);
@@ -359,16 +398,30 @@ export class DeckScene extends Phaser.Scene {
 
     const moving = Math.abs(vx) > 5 || Math.abs(vy) > 5;
     if (moving) {
-      this.facing =
-        Math.abs(vx) >= Math.abs(vy) ? (vx > 0 ? 'right' : 'left') : vy > 0 ? 'down' : 'up';
+      this.facing = Math.abs(vx) >= Math.abs(vy) ? (vx > 0 ? 'right' : 'left') : vy > 0 ? 'down' : 'up';
       this.player.anims.play(`walk-${this.facing}`, true);
     } else {
       this.player.anims.play(`idle-${this.facing}`, true);
     }
 
+    // y-sort against furniture; feet decide
+    this.player.setDepth(this.player.y + 14);
+
+    // sliding door reacts to proximity
+    if (this.door) {
+      const nearDoor = Phaser.Math.Distance.Between(this.player.x, this.player.y + 14, DOOR.x, DOOR.y) < 26;
+      if (nearDoor && !this.doorOpen) {
+        this.doorOpen = true;
+        this.door.play('door-open');
+      } else if (!nearDoor && this.doorOpen) {
+        this.doorOpen = false;
+        this.door.anims.playReverse('door-open');
+      }
+    }
+
     // re-arm hotspots once the player walks away
     for (const [id, rect] of this.zoneRects) {
-      if (this.engaged.has(id) && !rect.contains(this.player.x, this.player.y)) {
+      if (this.engaged.has(id) && !rect.contains(this.player.x, this.player.y + 14)) {
         this.engaged.delete(id);
       }
     }
