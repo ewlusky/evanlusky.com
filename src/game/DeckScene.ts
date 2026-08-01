@@ -38,6 +38,8 @@ export class DeckScene extends Phaser.Scene {
   private engaged = new Set<string>();
   private inCutscene = false;
   private lastTriggerAt = 0;
+  private blockedFrames = 0;
+  private lastPos = new Phaser.Math.Vector2();
 
   constructor() {
     super('deck');
@@ -332,6 +334,7 @@ export class DeckScene extends Phaser.Scene {
     const finish = () => {
       if (finished) return;
       finished = true;
+      this.events.emit('cutscene-finished');
       this.tweens.add({
         targets: [dim, star],
         alpha: 0,
@@ -352,9 +355,17 @@ export class DeckScene extends Phaser.Scene {
       star.once(Phaser.Animations.Events.ANIMATION_COMPLETE, finish);
     });
 
-    // click or any key skips
-    this.input.once('pointerdown', finish);
-    this.input.keyboard!.once('keydown', finish);
+    // click or any fresh keypress skips, but not the held key that walked us
+    // in here (its auto-repeat keydowns would end the show instantly)
+    const onSkipKey = (e: KeyboardEvent) => {
+      if (!e.repeat) finish();
+    };
+    this.time.delayedCall(600, () => {
+      if (finished) return;
+      this.input.once('pointerdown', finish);
+      this.input.keyboard!.on('keydown', onSkipKey);
+    });
+    this.events.once('cutscene-finished', () => this.input.keyboard!.off('keydown', onSkipKey));
     this.time.delayedCall(6500, finish);
   }
 
@@ -384,8 +395,13 @@ export class DeckScene extends Phaser.Scene {
       this.player.setVelocity(vx, vy);
     } else if (this.moveTarget) {
       const dist = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.moveTarget.x, this.moveTarget.y);
-      if (dist < 3) {
+      // clicking ON a prop puts the target inside its collider; give up
+      // instead of jogging against the furniture forever
+      const moved = Phaser.Math.Distance.Between(this.player.x, this.player.y, this.lastPos.x, this.lastPos.y);
+      this.blockedFrames = moved < 0.2 ? this.blockedFrames + 1 : 0;
+      if (dist < 3 || this.blockedFrames > 8) {
         this.moveTarget = null;
+        this.blockedFrames = 0;
         this.player.setVelocity(0);
       } else {
         this.physics.moveTo(this.player, this.moveTarget.x, this.moveTarget.y, SPEED);
@@ -395,6 +411,7 @@ export class DeckScene extends Phaser.Scene {
     } else {
       this.player.setVelocity(0);
     }
+    this.lastPos.set(this.player.x, this.player.y);
 
     const moving = Math.abs(vx) > 5 || Math.abs(vy) > 5;
     if (moving) {

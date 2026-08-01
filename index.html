@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Evan Lusky | Senior Software Engineer</title>
   <meta name="description" content="Evan Lusky. Senior software engineer in Nashville, TN. Resume, skills, and projects, plus a small pixel art ship deck you can walk around." />
+  <link rel="icon" type="image/png" href="/favicon.png" />
+  <meta property="og:title" content="Evan Lusky | Senior Software Engineer" />
+  <meta property="og:description" content="Walk a pixel ship deck where the furniture is the menu. Resume, projects, and a guitar that appears out of thin air." />
+  <meta property="og:image" content="https://evanlusky.com/og.png" />
+  <meta property="og:url" content="https://evanlusky.com/" />
+  <meta property="og:type" content="website" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
@@ -13,7 +20,7 @@
   <header class="site-header">
     <div class="brand">
       <h1 class="pixel">EVAN LUSKY</h1>
-      <p class="tagline">Senior software engineer. Nashville, TN.</p>
+      <p class="tagline">Senior software engineer in Nashville, TN. Lately: AI tooling, guardrails, and teaching teams to use the robots safely.</p>
     </div>
     <nav class="site-nav pixel" aria-label="Site">
       <a href="#/about">About</a>
@@ -33,36 +40,71 @@
       </p>
     </section>
 
-    <!-- TODO: all section copy below is placeholder. Real copy gets a write-as-evan pass before launch. -->
-
     <section class="panel" data-route="about" hidden>
       <h2 class="pixel">About</h2>
-      <p>[Placeholder] A few paragraphs about who I am, what I build, and what I am looking for.</p>
+      <p>The short version: I learn hard systems fast, and then I teach them to whoever comes next. That pattern has run through everything so far. Music school, then six years as a Navy Mandarin cryptologic linguist (top of my class at DLI), then neuroscience and computer science at CU Boulder, then seven years as a consulting engineer shipping healthcare and fintech systems. The newest hard system is AI tooling, and honestly it's the most fun one yet. I built the AI enablement layer for a HIPAA-regulated delivery team, wrote the guardrails, and got certified as an Anthropic architect along the way.</p>
+      <p>Off the clock I run a D&D campaign, build games and curricula for my wife and daughter, play guitar, and once built a working set of instruments out of PVC pipe. The ship you walked around up there is my pixel art. I guess the theme is: I like making things that teach people things.</p>
+      <p>Anyway. Scroll around, poke the wires, and if any of this looks useful to your team, the comms panel works.</p>
     </section>
 
     <section class="panel" data-route="resume" hidden>
       <h2 class="pixel">Resume</h2>
-      <p>[Placeholder] Short career summary here.</p>
-      <p><a class="btn pixel" href="/resume.pdf">Download PDF</a></p>
-      <!-- TODO: drop the real resume at public/resume.pdf -->
+      <p class="section-intro">The formatted version is below; the PDF is the same thing with margins. <a class="btn pixel" href="/resume.pdf" download>Download PDF</a></p>
+      <div class="resume">
+        <h3>Evan Lusky</h3>
+        <p class="resume-line">Nashville, TN &middot; ewlusky@gmail.com &middot; linkedin.com/in/evan-lusky &middot; github.com/EvanLusky</p>
+        <p><strong>AI enablement engineer.</strong> Senior engineer (7 years) who builds the systems that make AI tooling safe and useful for real teams: custom subagents, compliance guardrails, review workflows, and self-updating documentation, shipped inside a HIPAA-regulated production environment. Anthropic-certified architect (CCAR-P).</p>
+        <h4>Senior Full-Stack Software Engineer, consulting | Nashville, TN | Nov 2018 to Jul 2026</h4>
+        <ul>
+          <li>Built AI enablement for a HIPAA-regulated delivery team on a Medicare care-coordination platform (.NET, React, AWS): custom subagents, HIPAA gates around AI workflows, and guardrails that let the team use AI daily without PHI exposure.</li>
+          <li>Created an auto-updating engineering wiki using Claude as a persistent source of truth.</li>
+          <li>Built a TEFCA clinical-data integration end to end, with HIPAA audit logging on every PHI access and PHI-safe error surfacing.</li>
+          <li>Led development on a fintech modernization: reverse-engineered undocumented business logic for a ground-up rebuild.</li>
+          <li>Nine client engagements across healthcare and regulated industries, usually backfilling senior developers on short notice, which means fast context acquisition in codebases I did not write.</li>
+        </ul>
+        <h4>United States Navy | 2009 to 2015</h4>
+        <p>Cryptologic Technician Interpretive (E-5), honorable discharge. Top of class in Mandarin at the Defense Language Institute (Provost Award, Martin J. Kellogg Award); led a joint-service team on advanced collection systems and rewrote the associated training programs.</p>
+        <h4>Education and certifications</h4>
+        <ul>
+          <li>Claude Certified Architect, Professional (CCAR-P) and Anthropic Foundations, Anthropic, 2026; AWS Solutions Architect Associate in progress</li>
+          <li>B.S. Computer Science (AI focus) and B.S. Neuroscience, University of Colorado Boulder; Certificate in Cognitive Science</li>
+          <li>A.A. Chinese (Mandarin), Defense Language Institute; Full-Stack Web Development Certificate, Nashville Software School; B.A. Recording Technology, MTSU</li>
+        </ul>
+      </div>
     </section>
 
     <section class="panel" data-route="skills" hidden>
       <h2 class="pixel">Skills</h2>
-      <p>[Placeholder] Skills list goes here, grouped and honest.</p>
+      <p class="section-intro">Grouped honestly:</p>
+      <ul class="skills">
+        <li><strong>AI tooling:</strong> Claude, MCP servers, LiteLLM, subagent design, guardrails and evals, prompt and workflow engineering</li>
+        <li><strong>Languages and frameworks:</strong> C#/.NET, Java, Spring Boot, Node.js, TypeScript, React, Angular, Python</li>
+        <li><strong>Cloud and data:</strong> AWS (ECS Fargate, Aurora), Terraform, Docker, CI/CD, PostgreSQL, SQL Server, MongoDB</li>
+        <li><strong>Practice:</strong> Cypress, xUnit, Vitest, OpenAPI, documentation systems, developer onboarding</li>
+        <li><strong>Human languages:</strong> English, Mandarin Chinese (professional proficiency)</li>
+      </ul>
     </section>
 
     <section class="panel" data-route="projects" hidden>
       <h2 class="pixel">Projects</h2>
-      <p>[Placeholder] Selected projects with short writeups.</p>
+      <ul class="projects">
+        <li><strong>This site.</strong> A Phaser scene where a pixel version of me walks around a ship and the furniture is the nav menu. You are soaking in it. <a href="https://github.com/EvanLusky/evanlusky.com">Source on GitHub</a>.</li>
+        <li><strong>Bedtime worldbuilding recorder.</strong> A Raspberry Pi bedside rig for my daughter: she talks through her worldbuilding ideas as she falls asleep, AI transcribes and files them into an ever-growing world wiki she reads on her iPad. In progress, and honestly the best product spec I have ever been handed.</li>
+        <li><strong>My Algorithm.</strong> Local-only analysis of 1,300+ data-broker records pulled via DSAR requests, mapping who is selling what about me. Equal parts privacy tooling and organized spite.</li>
+        <li><strong>WorldWizard.</strong> A collaborative worldbuilding game built to play with my wife and daughter, currently at version 2.2. Print-ready, family-tested.</li>
+        <li><strong>Brickomancy.</strong> A print-and-play LEGO party game about building in silence while everyone judges your work. Shipped, not yet playtested, which I am told is very on brand for game design.</li>
+        <li><strong>Accent library.</strong> A 36-accent reference built while teaching myself dialect work for D&D voices. There is a spreadsheet. There is always a spreadsheet.</li>
+      </ul>
     </section>
 
     <section class="panel" data-route="contact" hidden>
       <h2 class="pixel">Contact</h2>
+      <p class="section-intro">No form, no funnel. Just the direct lines:</p>
       <ul class="contact-list">
-        <li><a href="https://github.com/ewlusky">GitHub</a></li>
-        <li><a href="#">LinkedIn</a> <!-- TODO: real LinkedIn URL --></li>
-        <li><a href="#">Email</a> <!-- TODO: decide whether to publish an address or use a form --></li>
+        <li><a href="mailto:ewlusky@gmail.com">ewlusky@gmail.com</a></li>
+        <li><a href="https://www.linkedin.com/in/evan-lusky">LinkedIn</a></li>
+        <li><a href="https://github.com/EvanLusky">GitHub</a></li>
+        <li><a href="/resume.pdf" download>Resume (PDF)</a></li>
       </ul>
     </section>
   </main>

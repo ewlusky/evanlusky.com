@@ -181,6 +181,51 @@ a:hover {
   flex-wrap: wrap;
 }
 
+/* Content details */
+
+.section-intro {
+  color: var(--dim);
+  margin-top: 0;
+}
+
+.resume h3 {
+  margin: 18px 0 2px;
+  font-size: 18px;
+}
+
+.resume-line {
+  color: var(--dim);
+  font-size: 13px;
+  margin-top: 0;
+}
+
+.resume h4 {
+  color: var(--accent);
+  margin: 18px 0 6px;
+  font-size: 15px;
+}
+
+.resume ul,
+.skills,
+.projects {
+  padding-left: 20px;
+}
+
+.resume li,
+.skills li,
+.projects li {
+  margin-bottom: 8px;
+}
+
+.projects {
+  list-style: none;
+  padding-left: 0;
+}
+
+.projects li {
+  margin-bottom: 14px;
+}
+
 /* Footer */
 
 .site-footer {
