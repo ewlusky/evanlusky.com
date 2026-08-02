@@ -10,16 +10,18 @@ const ZONE_PAD = 12;
 type Dir = 'down' | 'left' | 'right' | 'up';
 
 /**
- * The LimeZu generator sheet is 56 columns per row and its direction order is
- * RIGHT, UP, LEFT, DOWN (not the usual down-first). Walk = row 2, idle = row 1,
- * 6 frames per direction.
+ * Evan's PixelLab character, packed at half scale into 46x46 frames.
+ * Row order in every sheet: east, north, west, south (right/up/left/down).
+ * Character art occupies ~x17-30, y11-34 within the cell; feet at y~34.
  */
 const EVAN = {
-  cols: 56,
-  frames: 6,
-  idleRow: 1,
-  walkRow: 2,
-  dirOffset: { right: 0, up: 1, left: 2, down: 3 } as Record<Dir, number>,
+  frame: 46,
+  rows: { right: 0, up: 1, left: 2, down: 3 } as Record<Dir, number>,
+  walkFrames: 8,
+  idleFrames: 8,
+  interactFrames: 17,
+  body: { w: 12, h: 6, ox: 17, oy: 28 },
+  feet: 11,
 };
 
 export class DeckScene extends Phaser.Scene {
@@ -37,6 +39,7 @@ export class DeckScene extends Phaser.Scene {
   private zoneRects = new Map<string, Phaser.Geom.Rectangle>();
   private engaged = new Set<string>();
   private inCutscene = false;
+  private interacting = false;
   private lastTriggerAt = 0;
   private blockedFrames = 0;
   private lastPos = new Phaser.Math.Vector2();
@@ -51,7 +54,12 @@ export class DeckScene extends Phaser.Scene {
     this.load.image('room_under', 'assets/room_under.png');
     this.load.image('room_mid', 'assets/room_mid.png');
     this.load.image('room_over', 'assets/room_over.png');
-    this.load.spritesheet('evan', 'assets/evan.png', { frameWidth: 16, frameHeight: 32 });
+    this.load.spritesheet('evan_walk', 'assets/evan_walk.png', { frameWidth: 46, frameHeight: 46 });
+    this.load.spritesheet('evan_idle', 'assets/evan_idle.png', { frameWidth: 46, frameHeight: 46 });
+    this.load.spritesheet('evan_interact', 'assets/evan_interact.png', { frameWidth: 46, frameHeight: 46 });
+    this.load.audio('door_open', 'assets/audio/door_open.mp3');
+    this.load.audio('door_close', 'assets/audio/door_close.mp3');
+    this.load.audio('blip', 'assets/audio/blip.wav');
     this.load.spritesheet('screens', 'assets/screens.png', { frameWidth: 64, frameHeight: 48 });
     this.load.spritesheet('server', 'assets/server.png', { frameWidth: 16, frameHeight: 48 });
     this.load.spritesheet('door', 'assets/door.png', { frameWidth: 32, frameHeight: 32 });
@@ -100,19 +108,23 @@ export class DeckScene extends Phaser.Scene {
 
   private makeAnims(): void {
     (['right', 'up', 'left', 'down'] as Dir[]).forEach((dir) => {
-      const walkStart = EVAN.walkRow * EVAN.cols + EVAN.dirOffset[dir] * EVAN.frames;
-      const idleStart = EVAN.idleRow * EVAN.cols + EVAN.dirOffset[dir] * EVAN.frames;
+      const row = EVAN.rows[dir];
       this.anims.create({
         key: `walk-${dir}`,
-        frames: this.anims.generateFrameNumbers('evan', { start: walkStart, end: walkStart + EVAN.frames - 1 }),
-        frameRate: 10,
+        frames: this.anims.generateFrameNumbers('evan_walk', { start: row * EVAN.walkFrames, end: row * EVAN.walkFrames + EVAN.walkFrames - 1 }),
+        frameRate: 12,
         repeat: -1,
       });
       this.anims.create({
         key: `idle-${dir}`,
-        frames: this.anims.generateFrameNumbers('evan', { start: idleStart, end: idleStart + EVAN.frames - 1 }),
-        frameRate: 4,
+        frames: this.anims.generateFrameNumbers('evan_idle', { start: row * EVAN.idleFrames, end: row * EVAN.idleFrames + EVAN.idleFrames - 1 }),
+        frameRate: 6,
         repeat: -1,
+      });
+      this.anims.create({
+        key: `interact-${dir}`,
+        frames: this.anims.generateFrameNumbers('evan_interact', { start: row * EVAN.interactFrames, end: row * EVAN.interactFrames + EVAN.interactFrames - 1 }),
+        frameRate: 20,
       });
     });
 
@@ -167,11 +179,10 @@ export class DeckScene extends Phaser.Scene {
   }
 
   private buildPlayer(): void {
-    this.player = this.physics.add.sprite(SPAWN.x, SPAWN.y, 'evan', EVAN.idleRow * EVAN.cols + EVAN.dirOffset.down * EVAN.frames);
+    this.player = this.physics.add.sprite(SPAWN.x, SPAWN.y, 'evan_idle', EVAN.rows.down * EVAN.idleFrames);
     this.player.setCollideWorldBounds(true);
-    // the art sits at the bottom of the 16x32 cell; collide from the feet
-    this.player.body!.setSize(10, 6);
-    this.player.body!.setOffset(3, 26);
+    this.player.body!.setSize(EVAN.body.w, EVAN.body.h);
+    this.player.body!.setOffset(EVAN.body.ox, EVAN.body.oy);
     this.player.anims.play('idle-down');
   }
 
@@ -277,7 +288,7 @@ export class DeckScene extends Phaser.Scene {
     canvas.addEventListener('mouseleave', () => kb.removeCapture(codes));
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
-      if (this.inCutscene) return;
+      if (this.inCutscene || this.interacting) return;
       const b = ROOM.bounds;
       this.moveTarget = new Phaser.Math.Vector2(
         Phaser.Math.Clamp(pointer.worldX, b.x + 6, b.x + b.w - 6),
@@ -287,7 +298,7 @@ export class DeckScene extends Phaser.Scene {
   }
 
   private trigger(h: Hotspot): void {
-    if (this.inCutscene || this.engaged.has(h.id)) return;
+    if (this.inCutscene || this.interacting || this.engaged.has(h.id)) return;
     // adjacent zones can graze each other; one route per moment
     if (this.time.now - this.lastTriggerAt < 700) return;
     this.lastTriggerAt = this.time.now;
@@ -297,28 +308,39 @@ export class DeckScene extends Phaser.Scene {
     const cy = h.y + h.h / 2;
     const prop = this.props.get(h.id);
 
-    if (prop) {
-      this.tweens.add({ targets: prop, scaleX: 1.12, scaleY: 1.12, duration: 90, yoyo: true, repeat: 1 });
-    }
-
-    if (h.sparking) {
-      this.sparks.explode(26, cx, cy - 4);
-      this.cameras.main.shake(140, 0.004);
-      const label = this.labels.get(h.id)!;
-      label.setText('REPAIRED! ...FOR NOW');
-      this.time.delayedCall(1800, () => label.setText(h.label));
-      return;
-    }
-
     if (h.cutscene) {
       this.playGuitarCutscene(h);
       return;
     }
 
-    this.sparks.explode(10, cx, cy);
-    if (h.route) {
-      this.time.delayedCall(450, () => go(h.route!));
-    }
+    // face the prop and actually touch it before anything happens
+    this.interacting = true;
+    this.moveTarget = null;
+    this.player.setVelocity(0);
+    const dx = cx - this.player.x;
+    const dy = cy - (this.player.y + EVAN.feet);
+    this.facing = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
+    this.player.anims.play(`interact-${this.facing}`);
+    this.sound.play('blip', { volume: 0.25 });
+
+    this.player.once(`${Phaser.Animations.Events.ANIMATION_COMPLETE_KEY}interact-${this.facing}`, () => {
+      this.interacting = false;
+      if (prop) {
+        this.tweens.add({ targets: prop, scaleX: 1.12, scaleY: 1.12, duration: 90, yoyo: true, repeat: 1 });
+      }
+      if (h.sparking) {
+        this.sparks.explode(26, cx, cy - 4);
+        this.cameras.main.shake(140, 0.004);
+        const label = this.labels.get(h.id)!;
+        label.setText('REPAIRED! ...FOR NOW');
+        this.time.delayedCall(1800, () => label.setText(h.label));
+        return;
+      }
+      this.sparks.explode(10, cx, cy);
+      if (h.route) {
+        this.time.delayedCall(250, () => go(h.route!));
+      }
+    });
   }
 
   private playGuitarCutscene(h: Hotspot): void {
@@ -376,6 +398,12 @@ export class DeckScene extends Phaser.Scene {
 
     if (this.inCutscene) return;
 
+    if (this.interacting) {
+      this.player.setVelocity(0);
+      this.player.setDepth(this.player.y + EVAN.feet);
+      return;
+    }
+
     const k = this.keys;
     const left = k.A.isDown || k.LEFT.isDown;
     const right = k.D.isDown || k.RIGHT.isDown;
@@ -422,23 +450,28 @@ export class DeckScene extends Phaser.Scene {
     }
 
     // y-sort against furniture; feet decide
-    this.player.setDepth(this.player.y + 14);
+    this.player.setDepth(this.player.y + EVAN.feet);
 
     // sliding door reacts to proximity
     if (this.door) {
-      const nearDoor = Phaser.Math.Distance.Between(this.player.x, this.player.y + 14, DOOR.x, DOOR.y) < 26;
+      const nearDoor = Phaser.Math.Distance.Between(this.player.x, this.player.y + EVAN.feet, DOOR.x, DOOR.y) < 26;
       if (nearDoor && !this.doorOpen) {
         this.doorOpen = true;
         this.door.play('door-open');
+        this.sound.play('door_open', { volume: 0.35 });
       } else if (!nearDoor && this.doorOpen) {
         this.doorOpen = false;
         this.door.anims.playReverse('door-open');
+        this.sound.play('door_close', { volume: 0.35 });
       }
     }
 
-    // re-arm hotspots once the player walks away
+    // re-arm hotspots once the player walks away; must use the same geometry
+    // as the physics overlap (the body rect), or edge-standing re-triggers
+    const b = this.player.body!;
+    const bodyRect = new Phaser.Geom.Rectangle(b.x, b.y, b.width, b.height);
     for (const [id, rect] of this.zoneRects) {
-      if (this.engaged.has(id) && !rect.contains(this.player.x, this.player.y + 14)) {
+      if (this.engaged.has(id) && !Phaser.Geom.Rectangle.Overlaps(rect, bodyRect)) {
         this.engaged.delete(id);
       }
     }
