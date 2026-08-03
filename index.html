@@ -17,6 +17,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
 </head>
 <body>
+  <a class="skip-link" href="#main-content">Skip to content</a>
+  <noscript>
+    <p><strong>Evan Lusky</strong>, senior software engineer in Nashville, TN. The interactive parts need JavaScript, but the resume below does not. Email ewlusky@gmail.com.</p>
+  </noscript>
   <header class="site-header">
     <div class="brand">
       <h1 class="pixel">EVAN LUSKY</h1>
@@ -31,18 +35,32 @@
     </nav>
   </header>
 
-  <main>
+  <main id="main-content">
+    <aside class="signal" aria-label="Career at a glance">
+      <div class="stat"><span class="num pixel">7</span><span class="lbl">years of client-facing delivery</span></div>
+      <div class="stat"><span class="num pixel">9</span><span class="lbl">client engagements, healthcare to fintech</span></div>
+      <div class="stat"><span class="num pixel">49%</span><span class="lbl">of flagship repo commits, final quarter</span></div>
+      <p class="signal-note">AI enablement. Guardrails. Reliable delivery.</p>
+    </aside>
+
     <section class="deck-wrap" aria-label="Interactive deck">
       <div id="deck"></div>
       <p class="deck-hint">
         <span class="pixel key-hint">WASD</span> / <span class="pixel key-hint">arrows</span> to walk,
         or click where you want to go. Walk up to something to open it.
+        Everything the ship opens is also in the header, no game required.
       </p>
     </section>
 
     <section class="panel" data-route="about" hidden>
       <h2 class="pixel">About</h2>
       <p>The short version: I learn hard systems fast, and then I teach them to whoever comes next. That pattern has run through everything so far. Music school, then six years as a Navy Mandarin cryptologic linguist (top of my class at DLI), then neuroscience and computer science at CU Boulder, then seven years as a consulting engineer shipping healthcare and fintech systems. The newest hard system is AI tooling, and honestly it's the most fun one yet. I built the AI enablement layer for a HIPAA-regulated delivery team, wrote the guardrails, and got certified as an Anthropic architect along the way.</p>
+      <p>What that looks like in practice:</p>
+      <ul class="traits">
+        <li><strong>Fast context acquisition.</strong> Repeatedly backfilled senior engineers on short notice across nine client codebases without dropping client-facing delivery.</li>
+        <li><strong>Mechanism before convention.</strong> Most useful when a problem crosses ownership boundaries and needs someone to learn what the system actually does, not what its diagram claims.</li>
+        <li><strong>Written and measurable.</strong> Tacit knowledge becomes wikis, curricula, guardrails, and evaluation harnesses. If it stays in my head it does not count.</li>
+      </ul>
       <p>Off the clock I play in a couple of D&D campaigns, build games and curricula for my wife and daughter, play guitar, and once built a working set of instruments out of PVC pipe. The ship you walked around up there is my pixel art. I guess the theme is: I like making things that teach people things.</p>
       <p>Anyway. Scroll around, poke the wires, and if any of this looks useful to your team, the comms panel works.</p>
     </section>
@@ -96,6 +114,7 @@
         <li><strong>Accent library.</strong> A 36-accent reference built while teaching myself dialect work for D&D voices. There is a spreadsheet. There is always a spreadsheet.</li>
         <li><strong>Actual play.</strong> A couple of years of streamed tabletop on camera: Harlo Duiker in a <a href="https://www.youtube.com/watch?v=g2rz5RC-nvQ">Candela Obscura mini-campaign</a>, J&ouml;rri the fairy fighter/bard in <a href="https://www.youtube.com/watch?v=E5cgst_w7KM&t=6305s">Unearthed Arcanum</a>, and Yun the hobgoblin warlock in a campaign that opens on a <a href="https://www.youtube.com/live/0FeELSiSidk?t=487">theme song I composed</a>. The accent library above was not theoretical. More on <a href="https://www.youtube.com/@FischerKelTath">my channel</a>.</li>
         <li><strong>Aurigal.</strong> A homebrew D&D setting that lives in a very large Obsidian vault: factions, a pantheon, and a city map that took longer than some client projects. Ongoing, obviously.</li>
+        <li><strong>Idiolect.</strong> A 13-register model of my own writing style, built from a corpus of roughly 134,000 words of my real writing. A blind A/B test measured 81 percent detectability against a 60 percent target, and I published the negative result instead of burying it.</li>
       </ul>
     </section>
 
