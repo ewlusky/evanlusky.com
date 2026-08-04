@@ -8,4 +8,7 @@ art-src/
 
 # local planning files, not site material
 AGENTS.md
-*.docx
+/*.docx
+
+# private working notes must never be published
+*.local
