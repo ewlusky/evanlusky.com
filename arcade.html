@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Command Deck | Evan Lusky</title>
+    <meta
+      name="description"
+      content="A walkable pixel art command deck. Explore Evan Lusky's resume by wandering the ship, or take the corridor out to the hangar and fly."
+    />
+    <meta name="robots" content="index, follow" />
+  </head>
+  <body>
+    <div id="arcade">
+      <div class="arcade-bar">
+        <span><a href="/">&larr; evanlusky.com</a></span>
+        <span class="sub">WASD or arrows to walk &middot; E to open a station &middot; F flip &middot; G dance &middot; R guitar</span>
+      </div>
+      <div id="arcade-stage"></div>
+      <p class="arcade-note">
+        Walk to the aft corridor at the back of the deck to reach the hangar. Every station opens the same
+        content as the <a href="/#resume-content">written resume</a>.
+      </p>
+    </div>
+    <script type="module" src="/src/arcade/main.ts"></script>
+  </body>
+</html>

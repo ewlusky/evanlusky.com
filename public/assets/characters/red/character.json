@@ -1,0 +1,180 @@
+{
+  "frameWidth": 176,
+  "frameHeight": 181,
+  "source": {
+    "frameW": 256,
+    "frameH": 256,
+    "minX": 40,
+    "minY": 38
+  },
+  "clips": {
+    "hop-button-push-east": {
+      "file": "hop-button-push-east.png",
+      "frames": 9
+    },
+    "hop-button-push-north": {
+      "file": "hop-button-push-north.png",
+      "frames": 9
+    },
+    "hop-button-push-south": {
+      "file": "hop-button-push-south.png",
+      "frames": 9
+    },
+    "hop-button-push-west": {
+      "file": "hop-button-push-west.png",
+      "frames": 9
+    },
+    "hop-he-puts-his-hand-down-to-the-side-as-he-crouch-north": {
+      "file": "hop-he-puts-his-hand-down-to-the-side-as-he-crouch-north.png",
+      "frames": 9
+    },
+    "hop-he-puts-his-hand-down-to-the-side-as-he-crouch-north-east": {
+      "file": "hop-he-puts-his-hand-down-to-the-side-as-he-crouch-north-east.png",
+      "frames": 9
+    },
+    "hop-holding-the-acoustic-guitar-he-begins-to-pluck-south": {
+      "file": "hop-holding-the-acoustic-guitar-he-begins-to-pluck-south.png",
+      "frames": 9
+    },
+    "hop-idle-north": {
+      "file": "hop-idle-north.png",
+      "frames": 8
+    },
+    "hop-idle-tired-east": {
+      "file": "hop-idle-tired-east.png",
+      "frames": 9
+    },
+    "hop-idle-tired-north": {
+      "file": "hop-idle-tired-north.png",
+      "frames": 9
+    },
+    "hop-idle-tired-south": {
+      "file": "hop-idle-tired-south.png",
+      "frames": 9
+    },
+    "hop-idle-tired-west": {
+      "file": "hop-idle-tired-west.png",
+      "frames": 9
+    },
+    "hop-man-continues-to-navigate-through-a-futuristic-east": {
+      "file": "hop-man-continues-to-navigate-through-a-futuristic-east.png",
+      "frames": 9
+    },
+    "hop-man-continues-to-navigate-through-a-futuristic-north": {
+      "file": "hop-man-continues-to-navigate-through-a-futuristic-north.png",
+      "frames": 9
+    },
+    "hop-man-continues-to-navigate-through-a-futuristic-south": {
+      "file": "hop-man-continues-to-navigate-through-a-futuristic-south.png",
+      "frames": 9
+    },
+    "hop-man-continues-to-navigate-through-a-futuristic-west": {
+      "file": "hop-man-continues-to-navigate-through-a-futuristic-west.png",
+      "frames": 9
+    },
+    "hop-running-east": {
+      "file": "hop-running-east.png",
+      "frames": 8
+    },
+    "hop-running-north": {
+      "file": "hop-running-north.png",
+      "frames": 8
+    },
+    "hop-running-south": {
+      "file": "hop-running-south.png",
+      "frames": 8
+    },
+    "hop-running-west": {
+      "file": "hop-running-west.png",
+      "frames": 8
+    },
+    "hop-terrible-dance-south": {
+      "file": "hop-terrible-dance-south.png",
+      "frames": 5
+    },
+    "hop-the-man-reaches-into-the-air-pulling-an-acoust-north": {
+      "file": "hop-the-man-reaches-into-the-air-pulling-an-acoust-north.png",
+      "frames": 9
+    },
+    "hop-the-man-reaches-into-the-air-pulling-an-acoust-south": {
+      "file": "hop-the-man-reaches-into-the-air-pulling-an-acoust-south.png",
+      "frames": 9
+    },
+    "hop-the-man-reaches-out-and-taps-a-series-of-butto-south": {
+      "file": "hop-the-man-reaches-out-and-taps-a-series-of-butto-south.png",
+      "frames": 9
+    },
+    "base-front-flip-east": {
+      "file": "base-front-flip-east.png",
+      "frames": 12
+    },
+    "base-front-flip-south": {
+      "file": "base-front-flip-south.png",
+      "frames": 6
+    },
+    "base-front-flip-west": {
+      "file": "base-front-flip-west.png",
+      "frames": 12
+    },
+    "base-idle-east": {
+      "file": "base-idle-east.png",
+      "frames": 9
+    },
+    "base-idle-north": {
+      "file": "base-idle-north.png",
+      "frames": 9
+    },
+    "base-idle-south": {
+      "file": "base-idle-south.png",
+      "frames": 8
+    },
+    "base-idle-west": {
+      "file": "base-idle-west.png",
+      "frames": 9
+    },
+    "base-running-jump-east": {
+      "file": "base-running-jump-east.png",
+      "frames": 8
+    },
+    "base-running-jump-west": {
+      "file": "base-running-jump-west.png",
+      "frames": 8
+    },
+    "base-walking-east": {
+      "file": "base-walking-east.png",
+      "frames": 8
+    },
+    "base-walking-north": {
+      "file": "base-walking-north.png",
+      "frames": 8
+    },
+    "base-walking-north-east": {
+      "file": "base-walking-north-east.png",
+      "frames": 8
+    },
+    "base-walking-north-west": {
+      "file": "base-walking-north-west.png",
+      "frames": 8
+    },
+    "base-walking-south": {
+      "file": "base-walking-south.png",
+      "frames": 8
+    },
+    "base-walking-south-east": {
+      "file": "base-walking-south-east.png",
+      "frames": 8
+    },
+    "base-walking-south-west": {
+      "file": "base-walking-south-west.png",
+      "frames": 8
+    },
+    "base-walking-west": {
+      "file": "base-walking-west.png",
+      "frames": 8
+    }
+  },
+  "footPivot": {
+    "x": 0.5,
+    "y": 0.98
+  }
+}

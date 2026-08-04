@@ -163,6 +163,10 @@ function renderApp(data: ResumeData, options: ResumeInterfaceOptions): string {
         <p class="section-intro">
           ${bridgeInstructions}
         </p>
+        <p class="section-intro">
+          There is also a bigger one: <a class="deck-link" href="/arcade.html">open the full Command Deck</a>, a
+          walkable 2.5D ship with a corridor, a hangar, and somewhere to fly.
+        </p>
         <div class="game-stage" id="game-stage">
           <div class="game-frame">
             <div class="game-hud">

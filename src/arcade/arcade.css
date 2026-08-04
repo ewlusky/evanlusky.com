@@ -1,0 +1,205 @@
+:root {
+  --arcade-bg: #04070c;
+  --arcade-line: #1d2b44;
+  --arcade-text: #dbe6f5;
+  --arcade-dim: #7d8fb5;
+  --arcade-cyan: #6fe7ff;
+  --arcade-pink: #ff6ec7;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--arcade-bg);
+  color: var(--arcade-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+body.panel-open {
+  overflow: hidden;
+}
+
+#arcade {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.arcade-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--arcade-line);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.arcade-bar a {
+  color: var(--arcade-cyan);
+  text-decoration: none;
+}
+
+.arcade-bar a:hover {
+  color: var(--arcade-pink);
+}
+
+.arcade-bar .sub {
+  color: var(--arcade-dim);
+}
+
+#arcade-stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+#arcade-stage canvas {
+  image-rendering: pixelated;
+  display: block;
+  box-shadow: 0 0 0 1px #0d1626, 0 24px 70px rgba(0, 0, 0, 0.6);
+}
+
+/* Scanline veneer over the whole stage, purely decorative. */
+#arcade-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0) 0,
+    rgba(0, 0, 0, 0) 2px,
+    rgba(0, 0, 0, 0.11) 3px
+  );
+}
+
+.arcade-note {
+  padding: 8px 16px 14px;
+  color: var(--arcade-dim);
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Station panel */
+
+.arcade-panel {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(2, 4, 8, 0.82);
+}
+
+.arcade-panel[hidden] {
+  display: none;
+}
+
+.arcade-panel-inner {
+  width: min(760px, 100%);
+  max-height: 84vh;
+  overflow-y: auto;
+  background: #080e1a;
+  border: 1px solid var(--arcade-line);
+  box-shadow: 0 0 0 1px #04070c, 0 20px 60px rgba(0, 0, 0, 0.7);
+  padding: 20px 24px 28px;
+}
+
+.arcade-panel-close {
+  float: right;
+  background: none;
+  border: 1px solid var(--arcade-line);
+  color: var(--arcade-dim);
+  font: inherit;
+  font-size: 11px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.arcade-panel-close:hover {
+  color: var(--arcade-cyan);
+  border-color: var(--arcade-cyan);
+}
+
+.arcade-panel .eyebrow {
+  color: var(--arcade-pink);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  margin: 0 0 4px;
+}
+
+.arcade-panel h2 {
+  margin: 0 0 10px;
+  font-size: 22px;
+  color: var(--arcade-cyan);
+}
+
+.arcade-panel .intro {
+  color: var(--arcade-dim);
+  margin: 0 0 18px;
+  line-height: 1.6;
+}
+
+.arcade-panel article {
+  border-top: 1px solid var(--arcade-line);
+  padding-top: 14px;
+  margin-top: 14px;
+}
+
+.arcade-panel h3 {
+  margin: 0 0 4px;
+  font-size: 15px;
+}
+
+.arcade-panel .meta {
+  color: var(--arcade-dim);
+  font-size: 12px;
+  margin: 0 0 8px;
+}
+
+.arcade-panel p,
+.arcade-panel li {
+  line-height: 1.6;
+  font-size: 14px;
+}
+
+.arcade-panel ul {
+  margin: 8px 0 0;
+  padding-left: 18px;
+}
+
+.arcade-panel .tags {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.arcade-panel .tags li {
+  border: 1px solid var(--arcade-line);
+  color: var(--arcade-dim);
+  padding: 2px 7px;
+  font-size: 11px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #arcade-stage::after {
+    display: none;
+  }
+}

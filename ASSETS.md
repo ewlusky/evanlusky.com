@@ -1,4 +1,4 @@
-# Asset ledger
+﻿# Asset ledger
 
 Only production files listed here may be copied into `public/assets`. Source packs remain outside the public repository.
 
@@ -86,3 +86,21 @@ Only production files listed here may be copied into `public/assets`. Source pac
 ## Private source library warning
 
 `assets4site` is a large private source library. It includes paid and free packs, duplicate archives, executables, source files, unrelated repositories, and personal records. It must never be copied wholesale into this repository. License and provenance notes are required pack by pack before any additional production export is selected.
+
+## Command Deck arcade (`/arcade.html`) — added 2026-08-04
+
+Sources came from Evan's own `Assets4Site\_UNSORTED\NewIdea` drop. Evan confirmed on 2026-08-03 that everything in that folder is either free or under a licence he holds, and cleared it for use.
+
+| Asset | Source | Processing |
+|---|---|---|
+| `assets/characters/red/*.png` (41 strips) + `character.json` | `NewRedShirtAnimations` (PixelLab export, Evan's own character) | `tools/pack-character.mjs`: 352 frames of 256x256 cropped to a single shared 176x181 alpha bounding box so the feet never drift between clips, then packed into one horizontal strip per animation and direction. 2.9 MB source to 2.8 MB packed, roughly 2x less texture memory per frame. |
+| `assets/rooms/deck.png` | `fischerkeltath_plain_empty_2.5d_pixel_art_sci_fi_control_room_...0.png` (1456x816) | ffmpeg lanczos scale to 1280x720 to match the internal canvas. |
+| `assets/rooms/corridor.png` | `fischerkeltath_2.5d_orthographic_pixel_art_video_game_empty_h_...2.png` (1344x896) | Scaled to 1280x853 then cropped to 1280x720 from y=100 to sit the vanishing point correctly. |
+| `assets/parallax/*.png` | `synthwave` pixel pack (back, mountains, palms-back, palms, road) | Copied unmodified. Pack ships `license.pdf`. |
+| `assets/audio/deck-theme.ogg` | `NightCity.wav` (48.5 MB) | ffmpeg libvorbis q3 stereo, 2.4 MB. |
+| `assets/audio/flight-theme.ogg` | `RunningFree.wav` (41.4 MB) | ffmpeg libvorbis q3 stereo, 2.2 MB. |
+| `assets/audio/chime.ogg` | `Magic Fx 7.ogg` | Trimmed to 3 s, libvorbis q2, 40 KB. |
+
+Generated at runtime rather than shipped: the viewport star field and nebulae in `DeckScene`, and the ship sprite in `FlightScene`.
+
+**Not used.** The `NewIdea` mp4 loops were transcoded and tested, but Phaser 4 Video objects did not render in the verification browser and Phaser 4 ignores the v3 geometry-mask API used to clip them to the window. The star field replaces them. The source loops remain in `NewIdea` if that turns out to be an environment quirk rather than an engine change.
