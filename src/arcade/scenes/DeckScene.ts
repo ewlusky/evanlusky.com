@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import {
+  DECK_BLOCKERS,
   DECK_FLOOR,
   DECK_STATIONS,
+  isBlocked,
   projectFloor,
   type FloorPosition,
   type Station,
@@ -21,6 +23,24 @@ const WALK_V = 0.42;
 const RUN_MULTIPLIER = 1.75;
 const NEAR_STATION = 0.16;
 
+/**
+ * The jump arc. The animation does not lift him off the ground by itself, so
+ * the scene lifts the sprite while the flip plays.
+ *
+ * hopPeak   how high he gets at the top of the arc, in pixels before depth
+ *           scaling. Bigger number, bigger jump.
+ * travel    how far the flip carries him across the floor, in u units.
+ * liftStart when his feet leave the floor, as a fraction of the animation.
+ * liftEnd   when he lands again. Widen this pair if he floats before or after
+ *           the tuck; tighten it if he hangs in the air too long.
+ */
+const FLIP = {
+  hopPeak: 54,
+  travel: 0.13,
+  liftStart: 0.12,
+  liftEnd: 0.88,
+};
+
 type Keys = Record<
   'up' | 'down' | 'left' | 'right' | 'w' | 'a' | 's' | 'd' | 'interact' | 'flip' | 'dance' | 'guitar' | 'shift',
   Phaser.Input.Keyboard.Key
@@ -33,6 +53,8 @@ export class DeckScene extends Phaser.Scene {
   private pos: FloorPosition = { u: 0, v: 0.55 };
   private facing: Facing8 = 'south';
   private busyUntil = 0;
+  private hop: { start: number; duration: number; fromU: number; toU: number } | null = null;
+  private hopOffset = 0;
   private markers = new Map<string, Phaser.GameObjects.Ellipse>();
   private labels = new Map<string, Phaser.GameObjects.Text>();
   private activeStation: Station | null = null;
@@ -197,7 +219,7 @@ export class DeckScene extends Phaser.Scene {
       .setResolution(2);
 
     this.add
-      .text(width - 18, 14, 'WASD MOVE · E OPEN · F FLIP · G DANCE · R GUITAR', {
+      .text(width - 18, 14, 'WASD MOVE · SPACE FLIP · E OPEN · G DANCE · R GUITAR', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#5f7590',
@@ -244,6 +266,7 @@ export class DeckScene extends Phaser.Scene {
 
     kb.on('keydown-E', () => this.tryInteract());
     kb.on('keydown-F', () => this.playFlourish('flip'));
+    kb.on('keydown-SPACE', () => this.playFlourish('flip'));
     kb.on('keydown-G', () => this.playFlourish('dance'));
     kb.on('keydown-R', () => this.playFlourish('guitar'));
 
@@ -302,7 +325,19 @@ export class DeckScene extends Phaser.Scene {
 
     this.moveTarget = null;
     this.player.play(key);
-    this.busyUntil = this.time.now + this.animDuration(key);
+    const duration = this.animDuration(key);
+    this.busyUntil = this.time.now + duration;
+
+    if (kind === 'flip') {
+      const forward = facing4 === 'west' ? -1 : facing4 === 'east' ? 1 : 0;
+      const toU = Phaser.Math.Clamp(this.pos.u + forward * FLIP.travel, -0.94, 0.94);
+      this.hop = {
+        start: this.time.now,
+        duration,
+        fromU: this.pos.u,
+        toU: isBlocked(DECK_BLOCKERS, toU, this.pos.v) ? this.pos.u : toU,
+      };
+    }
 
     if (kind === 'guitar') {
       this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
@@ -351,8 +386,13 @@ export class DeckScene extends Phaser.Scene {
     if (this.leaving) return;
 
     if (this.busy()) {
+      this.updateHop();
       this.applyPosition();
       return;
+    }
+    if (this.hop) {
+      this.hop = null;
+      this.hopOffset = 0;
     }
 
     const k = this.keys;
@@ -385,8 +425,15 @@ export class DeckScene extends Phaser.Scene {
       v *= correction;
     }
 
-    this.pos.u = this.pos.u + h * WALK_U * speed * seconds;
-    this.pos.v = Phaser.Math.Clamp(this.pos.v + v * WALK_V * speed * seconds, 0.02, 0.97);
+    // Axis-separated so a blocked direction slides instead of sticking.
+    const nextU = this.pos.u + h * WALK_U * speed * seconds;
+    if (!isBlocked(DECK_BLOCKERS, nextU, this.pos.v)) {
+      this.pos.u = nextU;
+    }
+    const nextV = Phaser.Math.Clamp(this.pos.v + v * WALK_V * speed * seconds, 0.02, 0.97);
+    if (!isBlocked(DECK_BLOCKERS, this.pos.u, nextV)) {
+      this.pos.v = nextV;
+    }
 
     // Walking off the port side is the way out of the room.
     if (this.pos.u <= -0.96) {
@@ -408,14 +455,31 @@ export class DeckScene extends Phaser.Scene {
     this.updateStations();
   }
 
+  /**
+   * Lifts him along a sine arc while the flip plays and carries him forward.
+   * Airborne time is clipped to FLIP.liftStart/liftEnd so the arc lines up with
+   * the frames where he is actually off the deck.
+   */
+  private updateHop(): void {
+    if (!this.hop) return;
+    const t = Phaser.Math.Clamp((this.time.now - this.hop.start) / this.hop.duration, 0, 1);
+    this.pos.u = Phaser.Math.Linear(this.hop.fromU, this.hop.toU, t);
+
+    const span = FLIP.liftEnd - FLIP.liftStart;
+    const air = Phaser.Math.Clamp((t - FLIP.liftStart) / span, 0, 1);
+    this.hopOffset = Math.sin(Math.PI * air) * FLIP.hopPeak;
+  }
+
   private applyPosition(): void {
     const p = projectFloor(DECK_FLOOR, this.pos);
-    this.player.setPosition(p.x, p.y).setScale(p.scale).setDepth(Math.round(p.y));
+    // The shadow stays on the deck while he rises, which is what sells the jump.
+    const lift = Math.round(this.hopOffset * p.scale);
+    this.player.setPosition(p.x, p.y - lift).setScale(p.scale).setDepth(Math.round(p.y));
     this.shadow
       .setPosition(p.x, p.y - 3)
-      .setScale(p.scale, p.scale)
+      .setScale(p.scale * (1 - this.hopOffset / (FLIP.hopPeak * 3)), p.scale)
       .setDepth(Math.round(p.y) - 1)
-      .setAlpha(Phaser.Math.Linear(0.22, 0.46, this.pos.v));
+      .setAlpha(Phaser.Math.Linear(0.22, 0.46, this.pos.v) * (1 - this.hopOffset / (FLIP.hopPeak * 2.2)));
   }
 
   private updateStations(): void {

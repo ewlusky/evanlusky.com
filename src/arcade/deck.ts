@@ -46,8 +46,10 @@ export const DECK_FLOOR: FloorShape = {
   nearY: 712,
   farHalfWidth: 285,
   nearHalfWidth: 555,
-  farScale: 0.4,
-  nearScale: 0.72,
+  // Sized against the bucket seat in the room art: he should stand a little
+  // taller than its headrest, not come up to its armrest.
+  farScale: 0.92,
+  nearScale: 1.5,
 };
 
 export const CORRIDOR_FLOOR: FloorShape = {
@@ -56,8 +58,10 @@ export const CORRIDOR_FLOOR: FloorShape = {
   nearY: 740,
   farHalfWidth: 150,
   nearHalfWidth: 620,
-  farScale: 0.26,
-  nearScale: 0.86,
+  // The hall runs much deeper than the deck, so the range is wider, but the
+  // near end matches the deck so he stays the same person between rooms.
+  farScale: 0.34,
+  nearScale: 1.45,
 };
 
 export interface Station {
@@ -70,8 +74,31 @@ export interface Station {
   color: number;
 }
 
+/**
+ * Rectangles of floor he cannot stand on, in the same u/v space.
+ * Collision is axis-separated, so walking into one slides along it.
+ */
+export interface Blocker {
+  u0: number;
+  u1: number;
+  v0: number;
+  v1: number;
+}
+
+export const DECK_BLOCKERS: Blocker[] = [
+  // The console bank across the back of the room. Everything nearer than this
+  // is open floor, which keeps the hallway at the bottom clear.
+  // Add more rectangles here to block props; keep them clear of DECK_STATIONS
+  // or the station they cover becomes unreachable on foot.
+  { u0: -1.1, u1: 1.1, v0: -0.5, v1: 0.13 },
+];
+
+export function isBlocked(blockers: readonly Blocker[], u: number, v: number): boolean {
+  return blockers.some((b) => u >= b.u0 && u <= b.u1 && v >= b.v0 && v <= b.v1);
+}
+
 export const DECK_STATIONS: Station[] = [
-  { id: 'profile', label: 'SIGNAL DESK', section: 'about', u: 0, v: 0.06, color: 0x6fe7ff },
+  { id: 'profile', label: 'SIGNAL DESK', section: 'about', u: 0, v: 0.2, color: 0x6fe7ff },
   { id: 'experience', label: 'SYSTEMS CORE', section: 'experience', u: -0.84, v: 0.3, color: 0xffc36a },
   { id: 'skills', label: 'TOOL FORGE', section: 'skills', u: 0.84, v: 0.3, color: 0xb6a2ff },
   { id: 'projects', label: 'ARCHIVE GATE', section: 'projects', u: -0.78, v: 0.72, color: 0x7dffb0 },
