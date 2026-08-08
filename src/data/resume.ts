@@ -54,7 +54,7 @@ export const resumeData: ResumeData = {
   phoneDisplay: '443-876-7303',
   phoneHref: '+14438767303',
   links: [
-    { label: 'GitHub', href: 'https://github.com/EvanLusky' },
+    { label: 'GitHub', href: 'https://github.com/ewlusky' },
     { label: 'LinkedIn', href: 'https://www.linkedin.com/in/evan-lusky' },
   ],
   sections: [
@@ -287,7 +287,7 @@ export const resumeData: ResumeData = {
         {
           title: 'Elsewhere',
           bullets: [
-            'GitHub: github.com/EvanLusky',
+            'GitHub: github.com/ewlusky',
             'LinkedIn: linkedin.com/in/evan-lusky',
           ],
         },
