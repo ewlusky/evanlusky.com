@@ -14,6 +14,13 @@ export interface FloorShape {
   nearHalfWidth: number;
   farScale: number;
   nearScale: number;
+  /**
+   * Shapes how fast he grows as he comes forward. 1 is a straight line from
+   * farScale to nearScale. Below 1 he reaches most of his size early, which
+   * keeps the middle of the floor from looking undersized. Above 1 he stays
+   * small until he is close.
+   */
+  scaleCurve?: number;
 }
 
 export interface Projected {
@@ -32,7 +39,7 @@ export function projectFloor(shape: FloorShape, position: FloorPosition): Projec
   const u = Phaser.Math.Clamp(position.u, -1, 1);
   const y = Phaser.Math.Linear(shape.farY, shape.nearY, v);
   const halfWidth = Phaser.Math.Linear(shape.farHalfWidth, shape.nearHalfWidth, v);
-  const rawScale = Phaser.Math.Linear(shape.farScale, shape.nearScale, v);
+  const rawScale = Phaser.Math.Linear(shape.farScale, shape.nearScale, Math.pow(v, shape.scaleCurve ?? 1));
   return {
     x: Math.round(shape.centerX + u * halfWidth),
     y: Math.round(y),
@@ -47,9 +54,12 @@ export const DECK_FLOOR: FloorShape = {
   farHalfWidth: 285,
   nearHalfWidth: 555,
   // Sized against the bucket seat in the room art: he should stand a little
-  // taller than its headrest, not come up to its armrest.
+  // taller than its headrest, not come up to its armrest. The back of the room
+  // read correctly at 0.92, so that stays put and the curve does the work of
+  // lifting the middle and front, which were both about a quarter too small.
   farScale: 0.92,
-  nearScale: 1.5,
+  nearScale: 1.88,
+  scaleCurve: 0.7,
 };
 
 export const CORRIDOR_FLOOR: FloorShape = {
@@ -61,8 +71,25 @@ export const CORRIDOR_FLOOR: FloorShape = {
   // The hall runs much deeper than the deck, so the range is wider, but the
   // near end matches the deck so he stays the same person between rooms.
   farScale: 0.34,
-  nearScale: 1.45,
+  nearScale: 1.78,
+  scaleCurve: 0.78,
 };
+
+/** The pilot's chair on the starboard side, lifted out of the room art. */
+export const DECK_CHAIR = {
+  /** Where the crop came from in the 1280x720 room image. */
+  x: 879,
+  y: 437,
+  width: 84,
+  height: 180,
+  /** Screen y of its base, which is what the player y-sorts against. */
+  baseY: 613,
+  /** Where he stands to be offered the seat, and where he sits. */
+  standU: 0.62,
+  standV: 0.52,
+  seatU: 0.735,
+  seatV: 0.38,
+} as const;
 
 export interface Station {
   id: string;
@@ -90,7 +117,11 @@ export const DECK_BLOCKERS: Blocker[] = [
   // is open floor, which keeps the hallway at the bottom clear.
   // Add more rectangles here to block props; keep them clear of DECK_STATIONS
   // or the station they cover becomes unreachable on foot.
+  // Open the arcade with ?debug=1 to see these drawn and to read the u/v
+  // under the cursor while you place new ones.
   { u0: -1.1, u1: 1.1, v0: -0.5, v1: 0.13 },
+  // The pilot's chair. He walks around it, and behind it when he is further back.
+  { u0: 0.58, u1: 0.86, v0: 0.26, v1: 0.46 },
 ];
 
 export function isBlocked(blockers: readonly Blocker[], u: number, v: number): boolean {
@@ -100,8 +131,9 @@ export function isBlocked(blockers: readonly Blocker[], u: number, v: number): b
 export const DECK_STATIONS: Station[] = [
   { id: 'profile', label: 'SIGNAL DESK', section: 'about', u: 0, v: 0.2, color: 0x6fe7ff },
   { id: 'experience', label: 'SYSTEMS CORE', section: 'experience', u: -0.84, v: 0.3, color: 0xffc36a },
-  { id: 'skills', label: 'TOOL FORGE', section: 'skills', u: 0.84, v: 0.3, color: 0xb6a2ff },
+  // Sits below the chair so the chair blocker never walls it off.
+  { id: 'skills', label: 'TOOL FORGE', section: 'skills', u: 0.88, v: 0.6, color: 0xb6a2ff },
   { id: 'projects', label: 'ARCHIVE GATE', section: 'projects', u: -0.78, v: 0.72, color: 0x7dffb0 },
-  { id: 'education', label: 'LEARNING SPIRE', section: 'education', u: 0.78, v: 0.72, color: 0xff9ecb },
+  { id: 'education', label: 'LEARNING SPIRE', section: 'education', u: 0.66, v: 0.9, color: 0xff9ecb },
   { id: 'contact', label: 'COMMS RELAY', section: 'contact', u: 0, v: 0.95, color: 0xffe66e },
 ];

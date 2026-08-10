@@ -1,10 +1,10 @@
 {
-  "frameWidth": 176,
+  "frameWidth": 187,
   "frameHeight": 181,
   "source": {
     "frameW": 256,
     "frameH": 256,
-    "minX": 40,
+    "minX": 31,
     "minY": 38
   },
   "clips": {
@@ -171,6 +171,38 @@
     "base-walking-west": {
       "file": "base-walking-west.png",
       "frames": 8
+    },
+    "hop-character-sits-back-in-the-sci-fi-pilots-seat-east": {
+      "file": "hop-character-sits-back-in-the-sci-fi-pilots-seat-east.png",
+      "frames": 8
+    },
+    "hop-character-sits-back-in-the-sci-fi-pilots-seat-north": {
+      "file": "hop-character-sits-back-in-the-sci-fi-pilots-seat-north.png",
+      "frames": 9
+    },
+    "hop-he-puts-his-hand-down-to-the-side-as-he-crouch-east": {
+      "file": "hop-he-puts-his-hand-down-to-the-side-as-he-crouch-east.png",
+      "frames": 9
+    },
+    "hop-terrible-dance-north": {
+      "file": "hop-terrible-dance-north.png",
+      "frames": 5
+    },
+    "hop-the-man-reaches-out-and-taps-a-series-of-butto-north": {
+      "file": "hop-the-man-reaches-out-and-taps-a-series-of-butto-north.png",
+      "frames": 9
+    },
+    "base-character-gets-up-from-sitting-position-to-sta-east": {
+      "file": "base-character-gets-up-from-sitting-position-to-sta-east.png",
+      "frames": 9
+    },
+    "base-character-stays-seated-in-the-sci-fi-pilots-se-east": {
+      "file": "base-character-stays-seated-in-the-sci-fi-pilots-se-east.png",
+      "frames": 9
+    },
+    "base-character-stays-seated-in-the-sci-fi-pilots-se-north-east": {
+      "file": "base-character-stays-seated-in-the-sci-fi-pilots-se-north-east.png",
+      "frames": 9
     }
   },
   "footPivot": {

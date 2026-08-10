@@ -6,15 +6,23 @@
  * with the character occupying a small centre column; cropping cuts texture
  * memory by roughly 8x without touching a single visible pixel.
  *
- * Usage: node tools/pack-character.mjs <sourceDir> <outDir>
+ * Takes one or more source roots. Later roots win when two exports contain the
+ * same clip, so a newer export can be layered over an older one without losing
+ * the clips it happens to omit.
+ *
+ * Frames whose canvas size differs from the set's dominant size are skipped
+ * with a warning: one bad folder would otherwise poison the shared crop box
+ * and make the blit read outside the image.
+ *
+ * Usage: node tools/pack-character.mjs <outDir> <sourceDir...>
  */
 import { readdirSync, statSync, mkdirSync, writeFileSync, createReadStream, createWriteStream } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { PNG } from 'pngjs';
 
-const [, , SRC, OUT] = process.argv;
-if (!SRC || !OUT) {
-  console.error('usage: node tools/pack-character.mjs <sourceDir> <outDir>');
+const [, , OUT, ...SOURCES] = process.argv;
+if (!OUT || SOURCES.length === 0) {
+  console.error('usage: node tools/pack-character.mjs <outDir> <sourceDir...>');
   process.exit(1);
 }
 
@@ -71,27 +79,37 @@ function keyFor(root, dir) {
   return `${statePrefix}-${shorten(name)}-${shorten(direction)}`.replace(/-+/g, '-');
 }
 
-const clips = collectClips(SRC);
+// Later sources win, so a newer export layers over an older one by clip key.
+const byKey = new Map();
+for (const root of SOURCES) {
+  const found = collectClips(root);
+  console.log(`  ${root}: ${found.length} clips`);
+  for (const clip of found) {
+    byKey.set(keyFor(root, clip.dir), { ...clip, root });
+  }
+}
+const clips = [...byKey.entries()].map(([key, clip]) => ({ ...clip, key }));
 if (clips.length === 0) {
-  console.error(`no frame_*.png found under ${SRC}`);
+  console.error('no frame_*.png found under any source');
   process.exit(1);
 }
-console.log(`found ${clips.length} clips, ${clips.reduce((n, c) => n + c.frames.length, 0)} frames`);
+console.log(`merged to ${clips.length} clips, ${clips.reduce((n, c) => n + c.frames.length, 0)} frames`);
 
-// Pass 1: union alpha bounding box across every frame in the set.
-let minX = Infinity;
-let minY = Infinity;
-let maxX = -Infinity;
-let maxY = -Infinity;
-let frameW = 0;
-let frameH = 0;
+// Pass 1: measure every frame, then union the alpha bounding box across only
+// the frames that share the dominant canvas size.
 const ALPHA_FLOOR = 8;
+const sizeCount = new Map();
+const measured = new Map();
 
 for (const clip of clips) {
   for (const file of clip.frames) {
     const png = await readPng(file);
-    frameW = png.width;
-    frameH = png.height;
+    const size = `${png.width}x${png.height}`;
+    sizeCount.set(size, (sizeCount.get(size) ?? 0) + 1);
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
     for (let y = 0; y < png.height; y++) {
       for (let x = 0; x < png.width; x++) {
         if (png.data[(png.width * y + x) * 4 + 3] > ALPHA_FLOOR) {
@@ -102,6 +120,37 @@ for (const clip of clips) {
         }
       }
     }
+    measured.set(file, { size, minX, minY, maxX, maxY });
+  }
+}
+
+const dominant = [...sizeCount.entries()].sort((a, b) => b[1] - a[1])[0][0];
+const [frameW, frameH] = dominant.split('x').map(Number);
+for (const [size, count] of sizeCount) {
+  if (size !== dominant) console.warn(`  ! skipping ${count} frame(s) sized ${size}; set is ${dominant}`);
+}
+
+const skipped = [];
+for (const clip of clips) {
+  const bad = clip.frames.filter((f) => measured.get(f).size !== dominant);
+  if (bad.length > 0) {
+    skipped.push(clip.key);
+  }
+}
+const usable = clips.filter((c) => !skipped.includes(c.key));
+if (skipped.length > 0) console.warn(`  ! dropped clips (wrong canvas size): ${skipped.join(', ')}`);
+
+let minX = Infinity;
+let minY = Infinity;
+let maxX = -Infinity;
+let maxY = -Infinity;
+for (const clip of usable) {
+  for (const file of clip.frames) {
+    const m = measured.get(file);
+    if (m.minX < minX) minX = m.minX;
+    if (m.maxX > maxX) maxX = m.maxX;
+    if (m.minY < minY) minY = m.minY;
+    if (m.maxY > maxY) maxY = m.maxY;
   }
 }
 
@@ -119,8 +168,8 @@ console.log(`source ${frameW}x${frameH} -> crop ${cropW}x${cropH} at (${minX},${
 mkdirSync(OUT, { recursive: true });
 const manifest = { frameWidth: cropW, frameHeight: cropH, source: { frameW, frameH, minX, minY }, clips: {} };
 
-for (const clip of clips) {
-  const key = keyFor(SRC, clip.dir);
+for (const clip of usable) {
+  const key = clip.key;
   const strip = new PNG({ width: cropW * clip.frames.length, height: cropH });
   strip.data.fill(0);
 

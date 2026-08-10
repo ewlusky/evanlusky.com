@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import {
   DECK_BLOCKERS,
+  DECK_CHAIR,
   DECK_FLOOR,
   DECK_STATIONS,
   isBlocked,
@@ -59,6 +60,11 @@ export class DeckScene extends Phaser.Scene {
   private labels = new Map<string, Phaser.GameObjects.Text>();
   private activeStation: Station | null = null;
   private leaving = false;
+  private playingGuitar = false;
+  private seated = false;
+  private guitarLoop?: Phaser.Sound.BaseSound;
+  private readonly debug = new URLSearchParams(window.location.search).has('debug');
+  private debugReadout?: Phaser.GameObjects.Text;
   private prompt!: Phaser.GameObjects.Text;
   private stars!: Phaser.GameObjects.TileSprite;
   private exitArrow!: Phaser.GameObjects.Text;
@@ -73,6 +79,7 @@ export class DeckScene extends Phaser.Scene {
     const manifest = this.registry.get('char-manifest') as CharacterManifest;
     const { width, height } = this.scale;
 
+    this.resetState();
     this.add.image(0, 0, 'room-deck').setOrigin(0).setDisplaySize(width, height).setDepth(0);
     this.buildViewport();
     this.buildDoor();
@@ -83,11 +90,47 @@ export class DeckScene extends Phaser.Scene {
     this.player.setOrigin(manifest.footPivot.x, manifest.footPivot.y);
     this.player.play('idle-south');
 
+    this.buildChair();
     this.buildForeground();
     this.buildHud();
     this.bindInput();
     this.startTheme();
     this.applyPosition();
+    if (this.debug) this.buildDebugOverlay();
+  }
+
+  /**
+   * Phaser keeps one instance per scene and only runs field initializers when
+   * it is constructed, so every restart has to clear its own state by hand.
+   * Without this, `leaving` stays true after you walk out and come back, and
+   * update() bails on the first line forever.
+   */
+  private resetState(): void {
+    this.leaving = false;
+    this.busyUntil = 0;
+    this.hop = null;
+    this.hopOffset = 0;
+    this.moveTarget = null;
+    this.activeStation = null;
+    this.facing = 'south';
+    this.pos = { u: 0, v: 0.55 };
+    this.markers.clear();
+    this.labels.clear();
+    this.playingGuitar = false;
+    this.seated = false;
+    this.input.keyboard?.removeAllListeners();
+  }
+
+  /**
+   * The chair is drawn from the room art at its original position, so the
+   * pixels line up exactly. Giving it a depth of its own base lets him pass
+   * behind it when he is further back and in front of it when he is nearer.
+   */
+  private buildChair(): void {
+    this.add
+      .image(DECK_CHAIR.x, DECK_CHAIR.y, 'deck-chair')
+      .setOrigin(0)
+      .setDepth(DECK_CHAIR.baseY);
   }
 
   /**
@@ -194,7 +237,10 @@ export class DeckScene extends Phaser.Scene {
         .setResolution(2)
         .setAlpha(0.85);
       label.setInteractive({ useHandCursor: true });
-      label.on('pointerdown', () => this.openSection(station));
+      label.on('pointerdown', (_p: Phaser.Input.Pointer, _x: number, _y: number, event: Event) => {
+        event.stopPropagation();
+        this.openSection(station, true);
+      });
       this.labels.set(station.id, label);
     }
   }
@@ -219,7 +265,7 @@ export class DeckScene extends Phaser.Scene {
       .setResolution(2);
 
     this.add
-      .text(width - 18, 14, 'WASD MOVE · SPACE FLIP · E OPEN · G DANCE · R GUITAR', {
+      .text(width - 18, 14, 'WASD MOVE · SPACE FLIP · E USE · G DANCE · R GUITAR', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#5f7590',
@@ -264,14 +310,78 @@ export class DeckScene extends Phaser.Scene {
       false,
     ) as Keys;
 
+    // Stop the browser scrolling the page when the game wants these keys.
+    kb.addCapture([K.SPACE, K.UP, K.DOWN, K.LEFT, K.RIGHT]);
+
     kb.on('keydown-E', () => this.tryInteract());
     kb.on('keydown-F', () => this.playFlourish('flip'));
     kb.on('keydown-SPACE', () => this.playFlourish('flip'));
     kb.on('keydown-G', () => this.playFlourish('dance'));
-    kb.on('keydown-R', () => this.playFlourish('guitar'));
+    kb.on('keydown-R', () => this.toggleGuitar());
 
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      if (this.playingGuitar) this.stopGuitar();
       this.moveTarget = this.unproject(pointer.worldX, pointer.worldY);
+      if (this.debug) {
+        const p = this.unproject(pointer.worldX, pointer.worldY);
+        console.log(`floor u: ${p.u.toFixed(3)}  v: ${p.v.toFixed(3)}`);
+      }
+    });
+  }
+
+  /**
+   * Draws every blocker and reports the floor coordinate under the cursor, so
+   * new collision rectangles can be read straight off the screen.
+   * Open the arcade with ?debug=1.
+   */
+  private buildDebugOverlay(): void {
+    const g = this.add.graphics().setDepth(5000);
+    g.lineStyle(1, 0xff3860, 0.9);
+    g.fillStyle(0xff3860, 0.14);
+    for (const b of DECK_BLOCKERS) {
+      const corners = [
+        projectFloor(DECK_FLOOR, { u: b.u0, v: b.v0 }),
+        projectFloor(DECK_FLOOR, { u: b.u1, v: b.v0 }),
+        projectFloor(DECK_FLOOR, { u: b.u1, v: b.v1 }),
+        projectFloor(DECK_FLOOR, { u: b.u0, v: b.v1 }),
+      ];
+      g.beginPath();
+      g.moveTo(corners[0].x, corners[0].y);
+      for (const c of corners.slice(1)) g.lineTo(c.x, c.y);
+      g.closePath();
+      g.fillPath();
+      g.strokePath();
+    }
+
+    // Floor grid every 0.1 in v, every 0.2 in u.
+    g.lineStyle(1, 0x6fe7ff, 0.25);
+    for (let v = 0; v <= 1.0001; v += 0.1) {
+      const a = projectFloor(DECK_FLOOR, { u: -1, v });
+      const b = projectFloor(DECK_FLOOR, { u: 1, v });
+      g.lineBetween(a.x, a.y, b.x, b.y);
+    }
+    for (let u = -1; u <= 1.0001; u += 0.2) {
+      const a = projectFloor(DECK_FLOOR, { u, v: 0 });
+      const b = projectFloor(DECK_FLOOR, { u, v: 1 });
+      g.lineBetween(a.x, a.y, b.x, b.y);
+    }
+
+    this.debugReadout = this.add
+      .text(18, 64, '', {
+        fontFamily: 'monospace',
+        fontSize: '13px',
+        color: '#ff3860',
+        backgroundColor: 'rgba(4,8,14,0.85)',
+        padding: { x: 6, y: 4 },
+      })
+      .setDepth(5001)
+      .setResolution(2);
+
+    this.input.on('pointermove', (pointer: Phaser.Input.Pointer) => {
+      const p = this.unproject(pointer.worldX, pointer.worldY);
+      this.debugReadout?.setText(
+        `cursor  u ${p.u.toFixed(3)}   v ${p.v.toFixed(3)}\nplayer  u ${this.pos.u.toFixed(3)}   v ${this.pos.v.toFixed(3)}`,
+      );
     });
   }
 
@@ -308,17 +418,15 @@ export class DeckScene extends Phaser.Scene {
     return (anim.getTotalFrames() / anim.frameRate) * 1000 * (anim.repeat + 1);
   }
 
-  private playFlourish(kind: 'flip' | 'dance' | 'guitar'): void {
+  private playFlourish(kind: 'flip' | 'dance'): void {
     if (this.busy()) return;
+    if (this.playingGuitar) this.stopGuitar();
     const facing4 = toFacing4(this.facing);
     let key: string;
     if (kind === 'flip') {
       key = `flip-${facing4 === 'north' ? 'south' : facing4}`;
-    } else if (kind === 'dance') {
-      key = 'dance';
-      this.facing = 'south';
     } else {
-      key = 'guitar-summon';
+      key = 'dance';
       this.facing = 'south';
     }
     if (!this.anims.exists(key)) return;
@@ -339,38 +447,150 @@ export class DeckScene extends Phaser.Scene {
       };
     }
 
-    if (kind === 'guitar') {
-      this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-        if (!this.anims.exists('guitar-play')) return;
-        this.player.play('guitar-play');
-        this.busyUntil = this.time.now + this.animDuration('guitar-play');
-      });
+  }
+
+  /**
+   * He takes the guitar out and keeps playing until he is told otherwise:
+   * press R again, walk, or click. The strum loop rides along with the
+   * animation loop rather than a fixed number of repeats.
+   */
+  private toggleGuitar(): void {
+    if (this.playingGuitar) {
+      this.stopGuitar();
+      return;
     }
+    if (this.busy()) return;
+    if (!this.anims.exists('guitar-summon')) return;
+
+    this.moveTarget = null;
+    this.facing = 'south';
+    this.playingGuitar = true;
+    this.player.play('guitar-summon');
+    this.busyUntil = this.time.now + this.animDuration('guitar-summon');
+    this.playSound('guitar-summon-sfx', 0.5);
+
+    this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      if (!this.playingGuitar || !this.anims.exists('guitar-play')) return;
+      this.player.play('guitar-play');
+      this.busyUntil = 0;
+      if (this.cache.audio.exists('guitar-loop')) {
+        this.guitarLoop = this.sound.add('guitar-loop', { loop: true, volume: 0.5 });
+        this.guitarLoop.play();
+        this.setThemeVolume(0.08);
+      }
+    });
+  }
+
+  private stopGuitar(): void {
+    if (!this.playingGuitar) return;
+    this.playingGuitar = false;
+    this.guitarLoop?.stop();
+    this.guitarLoop = undefined;
+    this.setThemeVolume(0.32);
+    this.busyUntil = 0;
+    this.player.play(idleAnimFor(this.facing), true);
+  }
+
+  /** Both sound backends expose setVolume, but the base type does not. */
+  private setThemeVolume(value: number): void {
+    const sound = this.theme as (Phaser.Sound.BaseSound & { setVolume?: (v: number) => void }) | undefined;
+    sound?.setVolume?.(value);
+  }
+
+  /** Plays a sound only if it actually made it into the bundle. */
+  private playSound(key: string, volume: number): void {
+    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
   }
 
   private tryInteract(): void {
+    if (this.seated) {
+      this.standUp();
+      return;
+    }
     if (this.busy()) return;
+    if (this.nearChair()) {
+      this.sitDown();
+      return;
+    }
     if (this.activeStation) {
       this.openSection(this.activeStation);
     }
   }
 
-  private openSection(station: Station): void {
-    if (this.busy()) return;
+  private nearChair(): boolean {
+    return (
+      Math.hypot(this.pos.u - DECK_CHAIR.standU, (this.pos.v - DECK_CHAIR.standV) * 1.6) < 0.22
+    );
+  }
+
+  /** Takes the pilot's seat: he drops in, then works the console indefinitely. */
+  private sitDown(): void {
+    if (!this.anims.exists('sit-down') || !this.anims.exists('sit-loop')) return;
+    this.seated = true;
     this.moveTarget = null;
-    const key = `console-${toFacing4(this.facing)}`;
-    if (this.anims.exists(key)) {
-      this.player.play(key);
-      this.busyUntil = this.time.now + this.animDuration(key);
+    if (this.playingGuitar) this.stopGuitar();
+    this.pos.u = DECK_CHAIR.seatU;
+    this.pos.v = DECK_CHAIR.seatV;
+    this.applyPosition();
+    this.player.play('sit-down');
+    this.busyUntil = this.time.now + this.animDuration('sit-down');
+    this.playSound('interact', 0.4);
+    this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+      if (!this.seated) return;
+      this.player.play('sit-loop');
+      this.busyUntil = 0;
+    });
+  }
+
+  private standUp(): void {
+    if (!this.seated) return;
+    this.seated = false;
+    if (this.anims.exists('sit-stand')) {
+      this.player.play('sit-stand');
+      this.busyUntil = this.time.now + this.animDuration('sit-stand');
     }
-    this.sound.play('chime', { volume: 0.4 });
-    this.cameras.main.flash(180, 40, 90, 120);
-    this.game.events.emit('arcade:open-section', station.section);
+    this.pos.u = DECK_CHAIR.standU;
+    this.pos.v = DECK_CHAIR.standV;
+    this.facing = 'south';
+  }
+
+  /**
+   * Walking up and pressing E lets him work the console before the panel
+   * appears, because that animation is worth watching. Clicking a station
+   * label directly is a deliberate shortcut and opens straight away.
+   */
+  private openSection(station: Station, immediate = false): void {
+    if (this.busy()) return;
+    if (this.playingGuitar) this.stopGuitar();
+    this.moveTarget = null;
+
+    const reveal = () => {
+      this.cameras.main.flash(180, 40, 90, 120);
+      this.game.events.emit('arcade:open-section', station.section);
+    };
+
+    const key = `console-${toFacing4(this.facing)}`;
+    if (immediate || !this.anims.exists(key)) {
+      this.playSound('chime', 0.4);
+      reveal();
+      return;
+    }
+
+    this.player.play(key);
+    const duration = this.animDuration(key);
+    this.busyUntil = this.time.now + duration;
+    this.playSound('interact', 0.45);
+    // Let him finish reaching for the console, then bring the panel up.
+    this.time.delayedCall(duration, () => {
+      this.playSound('chime', 0.4);
+      reveal();
+    });
   }
 
   private toCorridor(): void {
     if (this.leaving) return;
     this.leaving = true;
+    this.playSound('transition', 0.5);
     this.cameras.main.fadeOut(320, 2, 4, 8);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.theme?.stop();
@@ -390,6 +610,20 @@ export class DeckScene extends Phaser.Scene {
       this.applyPosition();
       return;
     }
+
+    if (this.seated) {
+      const k = this.keys;
+      const wantsUp =
+        k.left.isDown || k.a.isDown || k.right.isDown || k.d.isDown ||
+        k.up.isDown || k.w.isDown || k.down.isDown || k.s.isDown;
+      if (wantsUp) {
+        this.standUp();
+      } else {
+        this.prompt.setText('[E]  STAND UP').setVisible(true);
+        this.applyPosition();
+        return;
+      }
+    }
     if (this.hop) {
       this.hop = null;
       this.hopOffset = 0;
@@ -405,6 +639,7 @@ export class DeckScene extends Phaser.Scene {
 
     if (h !== 0 || v !== 0) {
       this.moveTarget = null;
+      if (this.playingGuitar) this.stopGuitar();
     } else if (this.moveTarget) {
       const du = this.moveTarget.u - this.pos.u;
       const dv = this.moveTarget.v - this.pos.v;
@@ -474,7 +709,9 @@ export class DeckScene extends Phaser.Scene {
     const p = projectFloor(DECK_FLOOR, this.pos);
     // The shadow stays on the deck while he rises, which is what sells the jump.
     const lift = Math.round(this.hopOffset * p.scale);
-    this.player.setPosition(p.x, p.y - lift).setScale(p.scale).setDepth(Math.round(p.y));
+    // Seated, he belongs in front of the chair rather than sorted behind it.
+    const depth = this.seated ? DECK_CHAIR.baseY + 2 : Math.round(p.y);
+    this.player.setPosition(p.x, p.y - lift).setScale(p.scale).setDepth(depth);
     this.shadow
       .setPosition(p.x, p.y - 3)
       .setScale(p.scale * (1 - this.hopOffset / (FLIP.hopPeak * 3)), p.scale)
@@ -503,7 +740,9 @@ export class DeckScene extends Phaser.Scene {
 
     this.activeStation = bestDistance < NEAR_STATION ? nearest : null;
 
-    if (this.activeStation) {
+    if (this.nearChair()) {
+      this.prompt.setText('[E]  TAKE THE PILOT SEAT').setVisible(true);
+    } else if (this.activeStation) {
       this.prompt.setText(`[E]  OPEN ${this.activeStation.label}`).setVisible(true);
     } else if (this.pos.u < -0.7) {
       this.prompt.setText('KEEP WALKING LEFT TO REACH THE CORRIDOR').setVisible(true);

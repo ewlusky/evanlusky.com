@@ -38,6 +38,14 @@ export class FlightScene extends Phaser.Scene {
 
   create(): void {
     const { width, height } = this.scale;
+
+    // Same restart caveat as the other scenes: reset by hand.
+    this.leaving = false;
+    this.shipX = 300;
+    this.shipY = 300;
+    this.boostFactor = 1;
+    this.input.keyboard?.removeAllListeners();
+
     this.cameras.main.fadeIn(420, 2, 4, 8);
 
     this.makeShipTexture();

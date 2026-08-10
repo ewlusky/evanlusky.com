@@ -30,6 +30,10 @@ const CLIP_PREFIX = {
 } as const;
 
 export const CLIP_DANCE = 'hop-terrible-dance-south';
+/** The chair set. He drops into the seat facing away, then works it. */
+export const CLIP_SIT_DOWN = 'hop-character-sits-back-in-the-sci-fi-pilots-seat-north';
+export const CLIP_SIT_LOOP = 'base-character-stays-seated-in-the-sci-fi-pilots-se-north-east';
+export const CLIP_SIT_STAND = 'base-character-gets-up-from-sitting-position-to-sta-east';
 export const CLIP_GUITAR_SUMMON = 'hop-the-man-reaches-into-the-air-pulling-an-acoust-south';
 export const CLIP_GUITAR_PLAY = 'hop-holding-the-acoustic-guitar-he-begins-to-pluck-south';
 
@@ -95,7 +99,9 @@ export function registerCharacterAnims(anims: Phaser.Animations.AnimationManager
     specs.push({ key: `idle-${facing}`, clip: `${CLIP_PREFIX.idle}${facing}`, frameRate: 7, repeat: -1 });
     specs.push({ key: `run-${facing}`, clip: `${CLIP_PREFIX.run}${facing}`, frameRate: 15, repeat: -1 });
     specs.push({ key: `push-${facing}`, clip: `${CLIP_PREFIX.push}${facing}`, frameRate: 14, repeat: 0 });
-    specs.push({ key: `console-${facing}`, clip: `${CLIP_PREFIX.console}${facing}`, frameRate: 12, repeat: 1 });
+    // One pass: long enough to watch him work the console, short enough that
+    // the panel does not feel withheld.
+    specs.push({ key: `console-${facing}`, clip: `${CLIP_PREFIX.console}${facing}`, frameRate: 12, repeat: 0 });
   }
   for (const facing of ['east', 'south', 'west']) {
     specs.push({ key: `flip-${facing}`, clip: `${CLIP_PREFIX.flip}${facing}`, frameRate: 18, repeat: 0 });
@@ -104,8 +110,12 @@ export function registerCharacterAnims(anims: Phaser.Animations.AnimationManager
     specs.push({ key: `jump-${facing}`, clip: `${CLIP_PREFIX.jump}${facing}`, frameRate: 14, repeat: 0 });
   }
   specs.push({ key: 'dance', clip: CLIP_DANCE, frameRate: 10, repeat: 3 });
+  specs.push({ key: 'sit-down', clip: CLIP_SIT_DOWN, frameRate: 12, repeat: 0 });
+  specs.push({ key: 'sit-loop', clip: CLIP_SIT_LOOP, frameRate: 8, repeat: -1 });
+  specs.push({ key: 'sit-stand', clip: CLIP_SIT_STAND, frameRate: 12, repeat: 0 });
   specs.push({ key: 'guitar-summon', clip: CLIP_GUITAR_SUMMON, frameRate: 12, repeat: 0 });
-  specs.push({ key: 'guitar-play', clip: CLIP_GUITAR_PLAY, frameRate: 12, repeat: 2 });
+  // Loops forever; the scene decides when he puts it away.
+  specs.push({ key: 'guitar-play', clip: CLIP_GUITAR_PLAY, frameRate: 12, repeat: -1 });
 
   for (const spec of specs) {
     const clip = manifest.clips[spec.clip];

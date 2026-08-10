@@ -37,6 +37,14 @@ export class CorridorScene extends Phaser.Scene {
     const manifest = this.registry.get('char-manifest') as CharacterManifest;
     const { width, height } = this.scale;
 
+    // Phaser reuses the scene instance, so field initializers do not run again
+    // on restart. Without this the leaving flag stays set and update() bails.
+    this.leaving = false;
+    this.busyUntil = 0;
+    this.pos = { u: 0, v: 0.92 };
+    this.facing = 'north';
+    this.input.keyboard?.removeAllListeners();
+
     this.cameras.main.fadeIn(320, 2, 4, 8);
     this.add.image(0, 0, 'room-corridor').setOrigin(0).setDisplaySize(width, height).setDepth(0);
 

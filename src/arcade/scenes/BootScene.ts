@@ -25,6 +25,7 @@ export class BootScene extends Phaser.Scene {
 
     queueCharacterSheets(this.load, manifest, CHAR_BASE);
     this.load.image('room-deck', 'assets/rooms/deck.png');
+    this.load.image('deck-chair', 'assets/rooms/deck-chair.png');
     this.load.image('room-corridor', 'assets/rooms/corridor.png');
     this.load.image('px-back', 'assets/parallax/back.png');
     this.load.image('px-mountains', 'assets/parallax/mountains.png');
@@ -34,6 +35,10 @@ export class BootScene extends Phaser.Scene {
     this.load.audio('deck-theme', 'assets/audio/deck-theme.ogg');
     this.load.audio('flight-theme', 'assets/audio/flight-theme.ogg');
     this.load.audio('chime', 'assets/audio/chime.ogg');
+    this.load.audio('interact', 'assets/audio/interact.ogg');
+    this.load.audio('transition', 'assets/audio/transition.ogg');
+    this.load.audio('guitar-summon-sfx', 'assets/audio/guitar-summon-sfx.ogg');
+    this.load.audio('guitar-loop', 'assets/audio/guitar-loop.ogg');
 
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {
       registerCharacterAnims(this.anims, manifest);
