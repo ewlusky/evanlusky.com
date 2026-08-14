@@ -244,14 +244,20 @@ export class FlightScene extends Phaser.Scene {
     const boosting = k.boost.isDown;
     this.boostFactor = Phaser.Math.Linear(this.boostFactor, boosting ? 2.1 : 1, 0.08);
 
+    const vi = (this.registry.get('virtual-input') as { up: boolean; down: boolean; left: boolean; right: boolean }) ?? {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+    };
     let dir = 0;
-    if (k.up.isDown || k.w.isDown) dir -= 1;
-    if (k.down.isDown || k.s.isDown) dir += 1;
+    if (k.up.isDown || k.w.isDown || vi.up) dir -= 1;
+    if (k.down.isDown || k.s.isDown || vi.down) dir += 1;
     this.shipY = Phaser.Math.Clamp(this.shipY + dir * 240 * seconds, 150, ROAD_TOP - 40);
 
     let lateral = 0;
-    if (k.left.isDown || k.a.isDown) lateral -= 1;
-    if (k.right.isDown || k.d.isDown) lateral += 1;
+    if (k.left.isDown || k.a.isDown || vi.left) lateral -= 1;
+    if (k.right.isDown || k.d.isDown || vi.right) lateral += 1;
     this.shipX = Phaser.Math.Clamp(this.shipX + lateral * 260 * seconds, 120, this.scale.width - 18);
 
     // Flying into the docking beam on the right is the way back to the hangar.

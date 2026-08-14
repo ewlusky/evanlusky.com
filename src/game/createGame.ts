@@ -1,14 +1,17 @@
+/// <reference types="vite/client" />
 import Phaser from 'phaser';
 
 import type { ResumeSectionId } from '../data/resume';
 import type { GameInputControls, VirtualDirection } from '../site/resumeInterface';
-import { GAME_HEIGHT, GAME_WIDTH } from './config/gameConstants';
-import { PortfolioScene, type SceneBackgroundMode } from './scenes/PortfolioScene';
+import { BootScene } from '../arcade/scenes/BootScene';
+import { DeckScene } from '../arcade/scenes/DeckScene';
+import { CorridorScene } from '../arcade/scenes/CorridorScene';
+import { FlightScene } from '../arcade/scenes/FlightScene';
 
 interface CreateGameOptions {
   readonly parent: string;
   readonly reducedMotion: boolean;
-  readonly backgroundMode: SceneBackgroundMode;
+  readonly backgroundMode: string;
   readonly onSectionOpen: (sectionId: ResumeSectionId) => void;
   readonly onStatusChange: (message: string, state?: 'loading' | 'ready' | 'error') => void;
 }
@@ -17,26 +20,28 @@ export interface PortfolioGameControls extends GameInputControls {
   destroy(): void;
 }
 
+export interface VirtualInputState {
+  up: boolean;
+  down: boolean;
+  left: boolean;
+  right: boolean;
+}
+
+/**
+ * The command-deck game behind the same contract the site already speaks:
+ * one callback out (open a section), a small control surface in.
+ */
 export function createPortfolioGame(options: CreateGameOptions): PortfolioGameControls {
   const inputTarget = document.getElementById(options.parent);
   if (!inputTarget) {
     throw new Error(`The interactive game container "${options.parent}" was not found.`);
   }
 
-  const scene = new PortfolioScene({
-    reducedMotion: options.reducedMotion,
-    backgroundMode: options.backgroundMode,
-    onSectionOpen: options.onSectionOpen,
-    onStatusChange: options.onStatusChange,
-  });
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: options.parent,
-    width: GAME_WIDTH,
-    height: GAME_HEIGHT,
-    backgroundColor: '#080d19',
+    backgroundColor: '#04070c',
     pixelArt: true,
-    antialias: false,
     roundPixels: true,
     render: {
       antialiasGL: false,
@@ -46,51 +51,72 @@ export function createPortfolioGame(options: CreateGameOptions): PortfolioGameCo
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
+      width: 1280,
+      height: 720,
     },
     input: {
       keyboard: {
         target: inputTarget,
       },
     },
-    scene: [scene],
+    scene: [BootScene, DeckScene, CorridorScene, FlightScene],
   });
+
+  if (import.meta.env.DEV) {
+    (window as unknown as Record<string, unknown>).__embedded = game;
+  }
+
+  const virtualInput: VirtualInputState = { up: false, down: false, left: false, right: false };
+  game.registry.set('virtual-input', virtualInput);
+  game.registry.set('reduced-motion', options.reducedMotion);
+
+  game.events.on('arcade:open-section', (sectionId: ResumeSectionId) => options.onSectionOpen(sectionId));
+  game.events.once('arcade:ready', () =>
+    options.onStatusChange('Command deck online. Walk the ship, or open any station directly.', 'ready'),
+  );
+  game.events.on('arcade:status', (message: string, state?: 'loading' | 'ready' | 'error') =>
+    options.onStatusChange(message, state),
+  );
 
   game.canvas.tabIndex = 0;
   game.canvas.setAttribute(
     'aria-label',
-    options.backgroundMode === 'bridge'
-      ? 'Interactive 2.5D résumé command bridge'
-      : 'Interactive résumé archive map',
+    'Interactive 2.5D command deck. Move with WASD or the arrow keys, press Space to flip, and E or Enter to open the nearest station. Every station is also directly selectable.',
   );
   game.canvas.addEventListener('pointerdown', () => game.canvas.focus());
-  const handleInteractionKey = (event: KeyboardEvent): void => {
-    if (!event.repeat && (event.key.toLowerCase() === 'e' || event.key === 'Enter')) {
-      event.preventDefault();
-      scene.interactNearby();
-    }
+
+  const activeDeck = (): DeckScene | null => {
+    const deck = game.scene.getScene('deck') as DeckScene | null;
+    return deck && deck.scene.isActive() ? deck : null;
   };
-  inputTarget.addEventListener('keydown', handleInteractionKey);
 
   return {
     focusCanvas() {
       game.canvas.focus();
     },
     setVirtualDirection(direction: VirtualDirection, isPressed: boolean) {
-      scene.setVirtualDirection(direction, isPressed);
+      virtualInput[direction] = isPressed;
     },
     interact() {
-      scene.interactNearby();
+      activeDeck()?.interactNearby();
     },
     setPaused(isPaused: boolean) {
-      scene.clearVirtualDirections();
+      virtualInput.up = virtualInput.down = virtualInput.left = virtualInput.right = false;
+      for (const scene of game.scene.getScenes(true)) {
+        if (isPaused) scene.scene.pause();
+      }
+      if (!isPaused) {
+        for (const scene of game.scene.getScenes(false)) {
+          if (scene.scene.isPaused()) scene.scene.resume();
+        }
+      }
       if (isPaused) {
-        scene.scene.pause();
+        game.sound.pauseAll();
       } else {
-        scene.scene.resume();
+        game.sound.resumeAll();
       }
     },
     destroy() {
-      inputTarget.removeEventListener('keydown', handleInteractionKey);
       game.destroy(true);
     },
   };

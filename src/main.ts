@@ -10,18 +10,14 @@ if (!app) {
 }
 
 const sceneParameters = new URLSearchParams(window.location.search);
-const requestedBackground = sceneParameters.get('background');
 const reducedMotion =
   window.matchMedia('(prefers-reduced-motion: reduce)').matches ||
   sceneParameters.get('motion') === 'reduce';
-const backgroundMode =
-  requestedBackground === 'space' ||
-  requestedBackground === 'mountains' ||
-  requestedBackground === 'baseline'
-    ? requestedBackground
-    : 'bridge';
+// The command deck is a full 2D room, so the interface always renders the
+// complete WASD instructions and the four-way touch pad.
+const backgroundMode = 'deck';
 const resumeInterface = createResumeInterface(app, resumeData, {
-  bridgeMode: backgroundMode === 'bridge',
+  bridgeMode: false,
 });
 
 async function loadInteractiveGame(): Promise<void> {

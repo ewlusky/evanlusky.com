@@ -131,12 +131,18 @@ export class CorridorScene extends Phaser.Scene {
     }
     const seconds = delta / 1000;
     const k = this.keys;
+    const vi = (this.registry.get('virtual-input') as { up: boolean; down: boolean; left: boolean; right: boolean }) ?? {
+      up: false,
+      down: false,
+      left: false,
+      right: false,
+    };
     let h = 0;
     let v = 0;
-    if (k.left.isDown || k.a.isDown) h -= 1;
-    if (k.right.isDown || k.d.isDown) h += 1;
-    if (k.up.isDown || k.w.isDown) v -= 1;
-    if (k.down.isDown || k.s.isDown) v += 1;
+    if (k.left.isDown || k.a.isDown || vi.left) h -= 1;
+    if (k.right.isDown || k.d.isDown || vi.right) h += 1;
+    if (k.up.isDown || k.w.isDown || vi.up) v -= 1;
+    if (k.down.isDown || k.s.isDown || vi.down) v += 1;
 
     const running = k.shift.isDown && (h !== 0 || v !== 0);
     if (h !== 0 && v !== 0) {

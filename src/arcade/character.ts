@@ -113,6 +113,13 @@ export function registerCharacterAnims(anims: Phaser.Animations.AnimationManager
   specs.push({ key: 'sit-down', clip: CLIP_SIT_DOWN, frameRate: 12, repeat: 0 });
   specs.push({ key: 'sit-loop', clip: CLIP_SIT_LOOP, frameRate: 8, repeat: -1 });
   specs.push({ key: 'sit-stand', clip: CLIP_SIT_STAND, frameRate: 12, repeat: 0 });
+  for (const facing of ['east', 'south', 'west']) {
+    specs.push({ key: `jump-still-${facing}`, clip: `hop-two-footed-jump-${facing}`, frameRate: 14, repeat: 0 });
+  }
+  for (const facing of ['north', 'east', 'south', 'west'] as Facing4[]) {
+    specs.push({ key: `screen-start-${facing}`, clip: `hop-start-screen-interact-${facing}`, frameRate: 14, repeat: 0 });
+    specs.push({ key: `screen-loop-${facing}`, clip: `hop-screen-interact-loop-${facing}`, frameRate: 12, repeat: -1 });
+  }
   specs.push({ key: 'guitar-summon', clip: CLIP_GUITAR_SUMMON, frameRate: 12, repeat: 0 });
   // Loops forever; the scene decides when he puts it away.
   specs.push({ key: 'guitar-play', clip: CLIP_GUITAR_PLAY, frameRate: 12, repeat: -1 });

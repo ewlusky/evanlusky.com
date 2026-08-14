@@ -1,10 +1,10 @@
 {
-  "frameWidth": 187,
+  "frameWidth": 180,
   "frameHeight": 181,
   "source": {
     "frameW": 256,
     "frameH": 256,
-    "minX": 31,
+    "minX": 38,
     "minY": 38
   },
   "clips": {
@@ -202,6 +202,86 @@
     },
     "base-character-stays-seated-in-the-sci-fi-pilots-se-north-east": {
       "file": "base-character-stays-seated-in-the-sci-fi-pilots-se-north-east.png",
+      "frames": 9
+    },
+    "hop-he-puts-his-hand-down-to-the-side-as-he-crouch-south": {
+      "file": "hop-he-puts-his-hand-down-to-the-side-as-he-crouch-south.png",
+      "frames": 9
+    },
+    "hop-screen-interact-loop-east": {
+      "file": "hop-screen-interact-loop-east.png",
+      "frames": 9
+    },
+    "hop-screen-interact-loop-north": {
+      "file": "hop-screen-interact-loop-north.png",
+      "frames": 9
+    },
+    "hop-screen-interact-loop-south": {
+      "file": "hop-screen-interact-loop-south.png",
+      "frames": 9
+    },
+    "hop-screen-interact-loop-west": {
+      "file": "hop-screen-interact-loop-west.png",
+      "frames": 9
+    },
+    "hop-start-screen-interact-east": {
+      "file": "hop-start-screen-interact-east.png",
+      "frames": 9
+    },
+    "hop-start-screen-interact-north": {
+      "file": "hop-start-screen-interact-north.png",
+      "frames": 9
+    },
+    "hop-start-screen-interact-south": {
+      "file": "hop-start-screen-interact-south.png",
+      "frames": 9
+    },
+    "hop-start-screen-interact-west": {
+      "file": "hop-start-screen-interact-west.png",
+      "frames": 9
+    },
+    "hop-two-footed-jump-east": {
+      "file": "hop-two-footed-jump-east.png",
+      "frames": 7
+    },
+    "hop-two-footed-jump-south": {
+      "file": "hop-two-footed-jump-south.png",
+      "frames": 7
+    },
+    "hop-two-footed-jump-west": {
+      "file": "hop-two-footed-jump-west.png",
+      "frames": 7
+    },
+    "base-running-jump-north": {
+      "file": "base-running-jump-north.png",
+      "frames": 8
+    },
+    "base-running-jump-south": {
+      "file": "base-running-jump-south.png",
+      "frames": 8
+    },
+    "base-character-begins-with-screen-already-active-an-east": {
+      "file": "base-character-begins-with-screen-already-active-an-east.png",
+      "frames": 9
+    },
+    "base-character-begins-with-screen-already-active-an-north-east": {
+      "file": "base-character-begins-with-screen-already-active-an-north-east.png",
+      "frames": 9
+    },
+    "base-character-gets-up-from-sitting-position-to-sta-west": {
+      "file": "base-character-gets-up-from-sitting-position-to-sta-west.png",
+      "frames": 9
+    },
+    "base-character-stays-seated-and-engages-with-the-vi-north-east": {
+      "file": "base-character-stays-seated-and-engages-with-the-vi-north-east.png",
+      "frames": 9
+    },
+    "base-character-stays-seated-in-the-sci-fi-pilots-se-north": {
+      "file": "base-character-stays-seated-in-the-sci-fi-pilots-se-north.png",
+      "frames": 9
+    },
+    "base-character-stays-seated-in-the-sci-fi-pilots-se-west": {
+      "file": "base-character-stays-seated-in-the-sci-fi-pilots-se-west.png",
       "frames": 9
     }
   },

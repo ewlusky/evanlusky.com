@@ -1035,8 +1035,14 @@ footer p {
 }
 
 @media print {
+  @page {
+    size: letter;
+    margin: 0.45in;
+  }
+
   :root {
     color-scheme: light;
+    background: white;
   }
 
   body {
@@ -1051,6 +1057,19 @@ footer p {
     display: none !important;
   }
 
+  main {
+    overflow: visible;
+  }
+
+  .hero {
+    break-after: page;
+  }
+
+  .hero h1 span {
+    color: #111827;
+    -webkit-text-stroke: 0;
+  }
+
   .resume-content {
     width: 100%;
     padding: 0;
@@ -1061,6 +1080,7 @@ footer p {
     display: block;
     padding-bottom: 0.7rem;
     border-color: #111827;
+    break-inside: avoid-page;
   }
 
   .resume-masthead h2 {
@@ -1079,12 +1099,25 @@ footer p {
     border-color: #b8c0ca;
     color: #263241;
     font-size: 8.5pt;
+    break-inside: avoid-page;
   }
 
   .resume-section {
     padding: 1rem 0;
     break-inside: auto;
     border-color: #c8ced6;
+  }
+
+  .resume-section:not(#about) {
+    page-break-before: always;
+    break-before: page;
+  }
+
+  .section-heading {
+    page-break-inside: avoid;
+    page-break-after: avoid;
+    break-inside: avoid-page;
+    break-after: avoid-page;
   }
 
   .section-heading h2 {
@@ -1096,17 +1129,23 @@ footer p {
     color: #354052;
     font-size: 9.5pt;
     line-height: 1.35;
+    page-break-after: avoid;
+    break-after: avoid-page;
   }
 
   .entry-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-color: #aeb7c2;
-    background: #aeb7c2;
+    gap: 0.35rem;
+    overflow: visible;
+    border: 0;
+    background: transparent;
   }
 
   .resume-entry {
     padding: 0.65rem;
-    break-inside: avoid;
+    border: 0.75pt solid #aeb7c2;
+    page-break-inside: avoid;
+    break-inside: avoid-page;
     background: white;
   }
 

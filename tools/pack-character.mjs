@@ -48,7 +48,13 @@ function collectClips(root) {
   const walk = (dir) => {
     for (const entry of readdirSync(dir)) {
       const full = join(dir, entry);
-      if (statSync(full).isDirectory()) {
+      let stat;
+      try {
+        stat = statSync(full);
+      } catch {
+        continue; // cloud placeholders and locked files are not our problem
+      }
+      if (stat.isDirectory()) {
         walk(full);
       }
     }

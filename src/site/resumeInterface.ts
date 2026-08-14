@@ -85,7 +85,7 @@ function renderSection(section: ResumeSection): string {
 function renderApp(data: ResumeData, options: ResumeInterfaceOptions): string {
   const bridgeInstructions = options.bridgeMode
     ? 'Move with A/D or the left and right arrow keys. Press E or Enter near a console, or select any destination directly. The complete résumé remains below.'
-    : 'Move with WASD or arrow keys. Each terminal names the résumé section it opens. Press E or Enter nearby, or select any terminal directly. The complete résumé remains below.';
+    : 'Move with WASD or the arrow keys. Press E or Enter near a station, or select any station directly. Space flips, G dances, R plays guitar, the pilot seat is sittable, and the port-side corridor leads somewhere. The complete résumé remains below.';
   const bridgeTouchControls = options.bridgeMode
     ? `<button type="button" data-direction="left" aria-label="Move left">◀</button>
             <button type="button" class="touch-interact" data-interact-game aria-label="Open nearby station">E</button>
@@ -125,7 +125,7 @@ function renderApp(data: ResumeData, options: ResumeInterfaceOptions): string {
     <header class="site-header no-print">
       <a class="brand" href="#top" aria-label="Evan Lusky, back to top">EL<span aria-hidden="true">.</span></a>
       <nav class="primary-nav" aria-label="Résumé sections">${navigation}</nav>
-      <a class="header-resume" href="/Evan-Lusky-Resume.docx" download>Download résumé</a>
+      <a class="header-resume" href="/resume/Evan-Lusky-Resume.pdf" download>Download résumé PDF</a>
     </header>
 
     <main id="top">
@@ -163,10 +163,6 @@ function renderApp(data: ResumeData, options: ResumeInterfaceOptions): string {
         <p class="section-intro">
           ${bridgeInstructions}
         </p>
-        <p class="section-intro">
-          There is also a bigger one: <a class="deck-link" href="/arcade.html">open the full Command Deck</a>, a
-          walkable 2.5D ship with a corridor, a hangar, and somewhere to fly.
-        </p>
         <div class="game-stage" id="game-stage">
           <div class="game-frame">
             <div class="game-hud">
@@ -203,13 +199,15 @@ function renderApp(data: ResumeData, options: ResumeInterfaceOptions): string {
             <p>${escapeHtml(data.role)}</p>
           </div>
           <div class="resume-actions no-print">
-            <button class="button button-secondary" id="print-resume" type="button">Print or save PDF</button>
-            <a class="button button-primary" href="/Evan-Lusky-Resume.docx" download>Download DOCX</a>
+            <a class="button button-primary" href="/resume/Evan-Lusky-Resume.pdf" download>Download PDF</a>
+            <a class="button button-secondary" href="/resume/Evan-Lusky-Resume.docx" download>Download DOCX</a>
+            <button class="button button-secondary" id="print-resume" type="button">Print portfolio</button>
           </div>
         </div>
         <address class="contact-strip">
           <span>${escapeHtml(data.location)}</span>
           <a href="mailto:${escapeHtml(data.email)}">${escapeHtml(data.email)}</a>
+          <a href="tel:${escapeHtml(data.phoneHref)}">${escapeHtml(data.phoneDisplay)}</a>
           ${externalLinks}
         </address>
         ${data.sections.map(renderSection).join('')}

@@ -50,7 +50,6 @@ export const resumeData: ResumeData = {
   introduction:
     'Seven years delivering client-facing software across nine engagements, with a knack for finding the real failure at the seam between applications, infrastructure, documentation, and people.',
   email: 'ewlusky@gmail.com',
-  // kept for the downloadable resume only; the public page does not render it
   phoneDisplay: '443-876-7303',
   phoneHref: '+14438767303',
   links: [
@@ -81,6 +80,11 @@ export const resumeData: ResumeData = {
           title: 'Written and measurable',
           description:
             'Turns tacit knowledge into wikis, curricula, guardrails, evaluation harnesses, and clear operating agreements.',
+        },
+        {
+          title: 'Systems people can own',
+          description:
+            'Fits new tooling into workflows engineers already own, with explicit boundaries, guardrails, and operating context.',
         },
       ],
     },
@@ -181,7 +185,7 @@ export const resumeData: ResumeData = {
         },
         {
           title: 'Languages',
-          tags: ['English, native', 'Mandarin Chinese, DLI-trained professional proficiency'],
+          tags: ['English, native', 'Mandarin Chinese, DLI-trained'],
         },
       ],
     },
@@ -231,20 +235,19 @@ export const resumeData: ResumeData = {
       entries: [
         {
           title: 'University of Colorado Boulder',
-          meta: '2018',
           bullets: [
-            'B.S. Computer Science with an AI focus',
-            'B.S. Neuroscience',
+            'B.S. Computer Science, AI focus',
+            'Additional study and undergraduate research in neuroscience',
             'Certificate in Cognitive Science',
           ],
         },
         {
           title: 'Undergraduate research, University of Colorado Boulder',
-          meta: '2015 to 2018',
+          meta: 'During CU Boulder studies',
           bullets: [
-            'Supported Saddoris Lab goal-tracking and sign-tracking research involving the nucleus accumbens, with hands-on work using transgenic DREADD lines, animal handling, perfusion, and slice preparation.',
+            'Supported Saddoris Lab behavioral-neuroscience research on reward learning and the nucleus accumbens.',
             'Built and presented a preliminary sign-tracking model in Emergent, a biologically based neural simulation environment developed in the Computational Cognitive Neuroscience Lab.',
-            'Worked with lab researchers to debug the PBWM_Social computational model and presented research on computational addiction modeling.',
+            'Contributed to computational cognitive-neuroscience work in the O’Reilly lab, including debugging the PBWM_Social model and presenting computational addiction research.',
           ],
         },
         {
@@ -255,18 +258,18 @@ export const resumeData: ResumeData = {
           ],
         },
         {
-          title: 'Additional education',
-          bullets: [
-            'B.A. Recording Technology, Middle Tennessee State University',
-            'Full-Stack Web Development Certificate, Nashville Software School',
-          ],
+          title: 'Middle Tennessee State University',
+          bullets: ['Recording technology studies'],
+        },
+        {
+          title: 'Nashville Software School',
+          bullets: ['Full-Stack Web Development Certificate'],
         },
         {
           title: 'Certifications',
           bullets: [
             'Claude Certified Architect, Professional, Anthropic, July 2026',
             'Anthropic Foundations, July 2026',
-            'AWS Solutions Architect Associate, in progress',
           ],
         },
       ],
@@ -282,7 +285,7 @@ export const resumeData: ResumeData = {
       entries: [
         {
           title: 'Direct',
-          bullets: ['Email: ewlusky@gmail.com', 'Location: Nashville, Tennessee'],
+          bullets: ['Email: ewlusky@gmail.com', 'Phone: 443-876-7303', 'Location: Nashville, Tennessee'],
         },
         {
           title: 'Elsewhere',

@@ -97,6 +97,24 @@ export class DeckScene extends Phaser.Scene {
     this.startTheme();
     this.applyPosition();
     if (this.debug) this.buildDebugOverlay();
+    this.game.events.emit('arcade:ready');
+  }
+
+  /** The site's touch controls and station buttons come through here. */
+  public interactNearby(): void {
+    this.tryInteract();
+  }
+
+  /** Virtual d-pad state shared by the page's touch controls. */
+  private virtual(): { up: boolean; down: boolean; left: boolean; right: boolean } {
+    return (
+      (this.registry.get('virtual-input') as { up: boolean; down: boolean; left: boolean; right: boolean }) ?? {
+        up: false,
+        down: false,
+        left: false,
+        right: false,
+      }
+    );
   }
 
   /**
@@ -314,6 +332,7 @@ export class DeckScene extends Phaser.Scene {
     kb.addCapture([K.SPACE, K.UP, K.DOWN, K.LEFT, K.RIGHT]);
 
     kb.on('keydown-E', () => this.tryInteract());
+    kb.on('keydown-ENTER', () => this.tryInteract());
     kb.on('keydown-F', () => this.playFlourish('flip'));
     kb.on('keydown-SPACE', () => this.playFlourish('flip'));
     kb.on('keydown-G', () => this.playFlourish('dance'));
@@ -424,7 +443,14 @@ export class DeckScene extends Phaser.Scene {
     const facing4 = toFacing4(this.facing);
     let key: string;
     if (kind === 'flip') {
-      key = `flip-${facing4 === 'north' ? 'south' : facing4}`;
+      // Moving: the travelling flip. Standing still: a two-footed hop.
+      const k = this.keys;
+      const moving =
+        k.left.isDown || k.a.isDown || k.right.isDown || k.d.isDown ||
+        k.up.isDown || k.w.isDown || k.down.isDown || k.s.isDown;
+      const flipFacing = facing4 === 'north' ? 'south' : facing4;
+      key = moving ? `flip-${flipFacing}` : `jump-still-${flipFacing}`;
+      if (!this.anims.exists(key)) key = `flip-${flipFacing}`;
     } else {
       key = 'dance';
       this.facing = 'south';
@@ -437,7 +463,9 @@ export class DeckScene extends Phaser.Scene {
     this.busyUntil = this.time.now + duration;
 
     if (kind === 'flip') {
-      const forward = facing4 === 'west' ? -1 : facing4 === 'east' ? 1 : 0;
+      // The neutral jump goes straight up; the flip carries him forward.
+      const travelling = key.startsWith('flip-');
+      const forward = travelling ? (facing4 === 'west' ? -1 : facing4 === 'east' ? 1 : 0) : 0;
       const toU = Phaser.Math.Clamp(this.pos.u + forward * FLIP.travel, -0.94, 0.94);
       this.hop = {
         start: this.time.now,
@@ -569,18 +597,25 @@ export class DeckScene extends Phaser.Scene {
       this.game.events.emit('arcade:open-section', station.section);
     };
 
-    const key = `console-${toFacing4(this.facing)}`;
+    const facing4 = toFacing4(this.facing);
+    const startKey = `screen-start-${facing4}`;
+    const loopKey = `screen-loop-${facing4}`;
+    const key = this.anims.exists(startKey) ? startKey : `console-${facing4}`;
     if (immediate || !this.anims.exists(key)) {
       this.playSound('chime', 0.4);
       reveal();
       return;
     }
 
+    // He brings the holo screen up, works it for a beat, then the panel
+    // arrives. The animation is the point; let it play.
     this.player.play(key);
-    const duration = this.animDuration(key);
+    const duration = this.animDuration(key) + (key === startKey ? 650 : 0);
     this.busyUntil = this.time.now + duration;
     this.playSound('interact', 0.45);
-    // Let him finish reaching for the console, then bring the panel up.
+    if (key === startKey && this.anims.exists(loopKey)) {
+      this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.player.play(loopKey));
+    }
     this.time.delayedCall(duration, () => {
       this.playSound('chime', 0.4);
       reveal();
@@ -630,12 +665,13 @@ export class DeckScene extends Phaser.Scene {
     }
 
     const k = this.keys;
+    const vi = this.virtual();
     let h = 0;
     let v = 0;
-    if (k.left.isDown || k.a.isDown) h -= 1;
-    if (k.right.isDown || k.d.isDown) h += 1;
-    if (k.up.isDown || k.w.isDown) v -= 1;
-    if (k.down.isDown || k.s.isDown) v += 1;
+    if (k.left.isDown || k.a.isDown || vi.left) h -= 1;
+    if (k.right.isDown || k.d.isDown || vi.right) h += 1;
+    if (k.up.isDown || k.w.isDown || vi.up) v -= 1;
+    if (k.down.isDown || k.s.isDown || vi.down) v += 1;
 
     if (h !== 0 || v !== 0) {
       this.moveTarget = null;
@@ -682,7 +718,9 @@ export class DeckScene extends Phaser.Scene {
       // toward the axis that actually moved the character on screen.
       this.facing = facingFromVector(h, v * 0.7);
       this.player.play(running ? runAnimFor(this.facing) : walkAnimFor(this.facing), true);
-    } else {
+    } else if (!this.playingGuitar) {
+      // The idle override must not stomp the strumming loop, or the guitar
+      // gets "put away" one frame after the summon finishes.
       this.player.play(idleAnimFor(this.facing), true);
     }
 
