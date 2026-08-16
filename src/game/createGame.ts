@@ -54,11 +54,6 @@ export function createPortfolioGame(options: CreateGameOptions): PortfolioGameCo
       width: 1280,
       height: 720,
     },
-    input: {
-      keyboard: {
-        target: inputTarget,
-      },
-    },
     scene: [BootScene, DeckScene, CorridorScene, FlightScene],
   });
 
@@ -84,6 +79,25 @@ export function createPortfolioGame(options: CreateGameOptions): PortfolioGameCo
     'Interactive 2.5D command deck. Move with WASD or the arrow keys, press Space to flip, and E or Enter to open the nearest station. Every station is also directly selectable.',
   );
   game.canvas.addEventListener('pointerdown', () => game.canvas.focus());
+
+  // The keys work from anywhere on the page: no click-to-focus ritual.
+  // The first movement key also brings the game into view.
+  const MOVE_KEYS = new Set(['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright']);
+  let lastCenter = 0;
+  const centerOnGame = (event: KeyboardEvent) => {
+    if (!MOVE_KEYS.has(event.key.toLowerCase())) return;
+    const target = event.target as HTMLElement | null;
+    if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+    if (document.querySelector('dialog[open]')) return;
+    const rect = inputTarget.getBoundingClientRect();
+    const viewport = window.innerHeight;
+    const visible = rect.top >= -40 && rect.bottom <= viewport + 40;
+    if (!visible && Date.now() - lastCenter > 600) {
+      lastCenter = Date.now();
+      inputTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
+  window.addEventListener('keydown', centerOnGame);
 
   const activeDeck = (): DeckScene | null => {
     const deck = game.scene.getScene('deck') as DeckScene | null;
@@ -117,6 +131,7 @@ export function createPortfolioGame(options: CreateGameOptions): PortfolioGameCo
       }
     },
     destroy() {
+      window.removeEventListener('keydown', centerOnGame);
       game.destroy(true);
     },
   };

@@ -493,6 +493,10 @@ kbd {
   aspect-ratio: 12 / 7;
   width: 100%;
   min-height: 360px;
+  /* Capped so a single wheel position can hold the whole game on screen,
+     instead of every scroll stop straddling it. */
+  max-height: min(74vh, 700px);
+  margin-inline: auto;
 }
 
 .game-container canvas {

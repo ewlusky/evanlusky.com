@@ -78,10 +78,10 @@ export const CORRIDOR_FLOOR: FloorShape = {
 /** The pilot's chair on the starboard side, lifted out of the room art. */
 export const DECK_CHAIR = {
   /** Where the crop came from in the 1280x720 room image. */
-  x: 879,
-  y: 437,
-  width: 84,
-  height: 180,
+  x: 889,
+  y: 439,
+  width: 72,
+  height: 178,
   /** Screen y of its base, which is what the player y-sorts against. */
   baseY: 613,
   /** Where he stands to be offered the seat, and where he sits. */
@@ -93,12 +93,17 @@ export const DECK_CHAIR = {
 
 export interface Station {
   id: string;
+  /** The themed in-world name. */
   label: string;
+  /** What it actually opens; shown on hover and on approach. */
+  opens: string;
   /** Matches a section id in the resume data. */
   section: string;
   u: number;
   v: number;
   color: number;
+  /** He sits down at this one instead of standing at it. */
+  sit?: boolean;
 }
 
 /**
@@ -120,20 +125,27 @@ export const DECK_BLOCKERS: Blocker[] = [
   // Open the arcade with ?debug=1 to see these drawn and to read the u/v
   // under the cursor while you place new ones.
   { u0: -1.1, u1: 1.1, v0: -0.5, v1: 0.13 },
+  // The port-side console bank. The only way out is the foreground passage
+  // below it, walking in front of these computers.
+  { u0: -1.2, u1: -0.55, v0: 0.1, v1: 0.6 },
   // The pilot's chair. He walks around it, and behind it when he is further back.
-  { u0: 0.58, u1: 0.86, v0: 0.26, v1: 0.46 },
+  { u0: 0.6, u1: 0.84, v0: 0.28, v1: 0.46 },
 ];
+
+/** Leaving to port only works in front of the console bank. */
+export const EXIT_LANE_MIN_V = 0.62;
 
 export function isBlocked(blockers: readonly Blocker[], u: number, v: number): boolean {
   return blockers.some((b) => u >= b.u0 && u <= b.u1 && v >= b.v0 && v <= b.v1);
 }
 
 export const DECK_STATIONS: Station[] = [
-  { id: 'profile', label: 'SIGNAL DESK', section: 'about', u: 0, v: 0.2, color: 0x6fe7ff },
-  { id: 'experience', label: 'SYSTEMS CORE', section: 'experience', u: -0.84, v: 0.3, color: 0xffc36a },
-  // Sits below the chair so the chair blocker never walls it off.
-  { id: 'skills', label: 'TOOL FORGE', section: 'skills', u: 0.88, v: 0.6, color: 0xb6a2ff },
-  { id: 'projects', label: 'ARCHIVE GATE', section: 'projects', u: -0.78, v: 0.72, color: 0x7dffb0 },
-  { id: 'education', label: 'LEARNING SPIRE', section: 'education', u: 0.66, v: 0.9, color: 0xff9ecb },
-  { id: 'contact', label: 'COMMS RELAY', section: 'contact', u: 0, v: 0.95, color: 0xffe66e },
+  { id: 'profile', label: 'SIGNAL DESK', opens: 'About', section: 'about', u: 0, v: 0.2, color: 0x6fe7ff },
+  { id: 'experience', label: 'SYSTEMS CORE', opens: 'Experience', section: 'experience', u: -0.62, v: 0.22, color: 0xffc36a },
+  // The pilot's chair IS the Tool Forge: he sits down at it to open Skills.
+  { id: 'skills', label: 'TOOL FORGE', opens: 'Skills', section: 'skills', u: 0.72, v: 0.4, color: 0xb6a2ff, sit: true },
+  { id: 'projects', label: 'ARCHIVE GATE', opens: 'Projects', section: 'projects', u: -0.78, v: 0.72, color: 0x7dffb0 },
+  // The computer console to starboard of the chair.
+  { id: 'education', label: 'LEARNING SPIRE', opens: 'Education + research', section: 'education', u: 0.88, v: 0.58, color: 0xff9ecb },
+  { id: 'contact', label: 'COMMS RELAY', opens: 'Contact', section: 'contact', u: 0, v: 0.95, color: 0xffe66e },
 ];

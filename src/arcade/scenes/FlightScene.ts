@@ -31,6 +31,13 @@ export class FlightScene extends Phaser.Scene {
   private boostFactor = 1;
   private theme?: Phaser.Sound.BaseSound;
   private leaving = false;
+  private lasers: Phaser.GameObjects.Image[] = [];
+  private cars: Phaser.GameObjects.Image[] = [];
+  private explosions!: Phaser.GameObjects.Particles.ParticleEmitter;
+  private lastShot = 0;
+  private zapped = 0;
+  private scoreText!: Phaser.GameObjects.Text;
+  private carTimer?: Phaser.Time.TimerEvent;
 
   constructor() {
     super('flight');
@@ -44,12 +51,18 @@ export class FlightScene extends Phaser.Scene {
     this.shipX = 300;
     this.shipY = 300;
     this.boostFactor = 1;
+    this.lasers = [];
+    this.cars = [];
+    this.lastShot = 0;
+    this.zapped = 0;
     this.input.keyboard?.removeAllListeners();
 
     this.cameras.main.fadeIn(420, 2, 4, 8);
 
     this.makeShipTexture();
     this.makeSparkTexture();
+    this.makeLaserTexture();
+    this.makeCarTexture();
 
     // Tile wider than the canvas so only one sun is ever on screen.
     this.sky = this.add.tileSprite(0, 0, width, HORIZON + 40, 'px-back').setOrigin(0).setDepth(0);
@@ -93,6 +106,25 @@ export class FlightScene extends Phaser.Scene {
 
     this.ship = this.add.sprite(this.shipX, this.shipY, 'ship').setDepth(6).setScale(2.2);
 
+    this.explosions = this.add.particles(0, 0, 'spark', {
+      speed: { min: 60, max: 240 },
+      lifespan: { min: 240, max: 620 },
+      scale: { start: 2.2, end: 0 },
+      gravityY: 140,
+      quantity: 1,
+      tint: [0xffe66e, 0xff8a3c, 0xff2244, 0xffffff],
+      blendMode: 'ADD',
+      emitting: false,
+    });
+    this.explosions.setDepth(6.5);
+
+    this.scoreText = this.add
+      .text(this.scale.width / 2, 14, '', { fontFamily: 'monospace', fontSize: '13px', color: '#ffe66e' })
+      .setOrigin(0.5, 0)
+      .setDepth(101)
+      .setResolution(2);
+    this.scheduleCar();
+
     // Somewhere to actually fly to, so leaving is part of the world.
     this.dockGlow = this.add.rectangle(width - 26, height / 2, 52, height, 0x6fe7ff, 0.05).setDepth(7);
     this.tweens.add({
@@ -119,7 +151,7 @@ export class FlightScene extends Phaser.Scene {
       .setDepth(100)
       .setResolution(2);
     this.add
-      .text(this.scale.width - 18, 14, 'WASD FLY · SHIFT BOOST · FLY RIGHT TO DOCK', {
+      .text(this.scale.width - 18, 14, 'WASD FLY · SPACE LASERS · SHIFT BOOST · FLY RIGHT TO DOCK', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#7d8fb5',
@@ -161,6 +193,8 @@ export class FlightScene extends Phaser.Scene {
     ) as FlightScene['keys'];
     kb.on('keydown-Q', () => this.leave('deck'));
     kb.on('keydown-ESC', () => this.leave('deck'));
+    kb.on('keydown-SPACE', () => this.fireLaser());
+    kb.addCapture([K.SPACE, K.UP, K.DOWN, K.LEFT, K.RIGHT]);
 
     this.startTheme();
   }
@@ -218,6 +252,59 @@ export class FlightScene extends Phaser.Scene {
     g.fillStyle(0xffffff).fillRect(0, 0, 3, 3);
     g.generateTexture('spark', 3, 3);
     g.destroy();
+  }
+
+  private makeLaserTexture(): void {
+    if (this.textures.exists('laser')) return;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(0x6fe7ff).fillRect(0, 0, 16, 4);
+    g.fillStyle(0xffffff).fillRect(2, 1, 12, 2);
+    g.generateTexture('laser', 16, 4);
+    g.destroy();
+  }
+
+  /** Oncoming synthwave traffic: chunky hover-sedans with underglow. */
+  private makeCarTexture(): void {
+    if (this.textures.exists('hovercar')) return;
+    const g = this.make.graphics({ x: 0, y: 0 });
+    g.fillStyle(0x1b0f33).fillRect(2, 6, 44, 10);
+    g.fillStyle(0x7a2ea8).fillRect(4, 7, 40, 7);
+    g.fillStyle(0xb04ad8).fillRect(4, 7, 40, 3);
+    g.fillStyle(0x0d1a2e).fillRect(10, 2, 18, 7);
+    g.fillStyle(0x6fe7ff).fillRect(12, 3, 14, 4);
+    g.fillStyle(0xffe66e).fillRect(0, 9, 4, 3);
+    g.fillStyle(0xff2244).fillRect(44, 9, 4, 3);
+    g.fillStyle(0xff6ec7, 0.8).fillRect(6, 17, 36, 2);
+    g.generateTexture('hovercar', 48, 20);
+    g.destroy();
+  }
+
+  private fireLaser(): void {
+    if (this.leaving || this.time.now - this.lastShot < 170) return;
+    this.lastShot = this.time.now;
+    const bolt = this.add.image(this.ship.x + 44, this.ship.y + 4, 'laser').setDepth(5.5).setScale(2);
+    this.lasers.push(bolt);
+    if (this.cache.audio.exists('blip')) this.sound.play('blip', { volume: 0.12, rate: 1.6 });
+  }
+
+  private spawnCar(): void {
+    if (this.leaving) return;
+    const y = Phaser.Math.Between(170, ROAD_TOP - 60);
+    const car = this.add.image(this.scale.width + 60, y, 'hovercar').setDepth(5.2).setScale(2.2);
+    car.setData('speed', Phaser.Math.Between(180, 360));
+    car.setData('bob', Math.random() * Math.PI * 2);
+    this.cars.push(car);
+    this.scheduleCar();
+  }
+
+  private scheduleCar(): void {
+    this.carTimer?.remove();
+    this.carTimer = this.time.delayedCall(Phaser.Math.Between(1100, 2300), () => this.spawnCar());
+  }
+
+  private explode(x: number, y: number): void {
+    this.explosions.explode(22, x, y);
+    this.cameras.main.shake(90, 0.003);
   }
 
   private startTheme(): void {
@@ -280,5 +367,55 @@ export class FlightScene extends Phaser.Scene {
     this.palmsBack.tilePositionX += RATES.palmsBack * f;
     this.palms.tilePositionX += RATES.palms * f;
     this.road.tilePositionX += RATES.road * f;
+
+    // Lasers out, traffic in, and the arithmetic where they meet.
+    for (let i = this.lasers.length - 1; i >= 0; i--) {
+      const bolt = this.lasers[i];
+      bolt.x += 980 * seconds;
+      if (bolt.x > this.scale.width + 60) {
+        bolt.destroy();
+        this.lasers.splice(i, 1);
+      }
+    }
+
+    for (let i = this.cars.length - 1; i >= 0; i--) {
+      const car = this.cars[i];
+      const speed = (car.getData('speed') as number) + 140 * this.boostFactor;
+      car.x -= speed * seconds;
+      car.y += Math.sin(this.time.now / 300 + (car.getData('bob') as number)) * 0.5;
+      if (car.x < -80) {
+        car.destroy();
+        this.cars.splice(i, 1);
+        continue;
+      }
+
+      // Laser hit: the whole point of having lasers.
+      let destroyed = false;
+      for (let j = this.lasers.length - 1; j >= 0; j--) {
+        const bolt = this.lasers[j];
+        if (Math.abs(bolt.x - car.x) < 52 && Math.abs(bolt.y - car.y) < 24) {
+          this.explode(car.x, car.y);
+          bolt.destroy();
+          this.lasers.splice(j, 1);
+          car.destroy();
+          this.cars.splice(i, 1);
+          this.zapped += 1;
+          if (this.cache.audio.exists('chime')) this.sound.play('chime', { volume: 0.25, rate: 1.4 });
+          destroyed = true;
+          break;
+        }
+      }
+      if (destroyed) continue;
+
+      // Clipping a car stings but costs nothing except the shake.
+      if (Math.abs(car.x - this.ship.x) < 48 && Math.abs(car.y - this.ship.y) < 22) {
+        this.explode(car.x, car.y);
+        this.cameras.main.shake(200, 0.008);
+        car.destroy();
+        this.cars.splice(i, 1);
+      }
+    }
+
+    this.scoreText.setText(this.zapped > 0 ? `CARS ZAPPED · ${this.zapped}` : 'TRAFFIC AHEAD · SPACE TO FIRE');
   }
 }

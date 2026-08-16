@@ -28,6 +28,8 @@ export class CorridorScene extends Phaser.Scene {
   private prompt!: Phaser.GameObjects.Text;
   private doorLight!: Phaser.GameObjects.Rectangle;
   private leaving = false;
+  private jumpUntil = 0;
+  private jumpStart = 0;
 
   constructor() {
     super('corridor');
@@ -41,6 +43,8 @@ export class CorridorScene extends Phaser.Scene {
     // on restart. Without this the leaving flag stays set and update() bails.
     this.leaving = false;
     this.busyUntil = 0;
+    this.jumpUntil = 0;
+    this.jumpStart = 0;
     this.pos = { u: 0, v: 0.92 };
     this.facing = 'north';
     this.input.keyboard?.removeAllListeners();
@@ -103,6 +107,12 @@ export class CorridorScene extends Phaser.Scene {
       false,
     ) as Keys;
     kb.on('keydown-F', () => this.flip());
+    kb.on('keydown-SPACE', () => {
+      const moving =
+        this.keys.left.isDown || this.keys.a.isDown || this.keys.right.isDown || this.keys.d.isDown ||
+        this.keys.up.isDown || this.keys.w.isDown || this.keys.down.isDown || this.keys.s.isDown;
+      this.jump(moving);
+    });
 
     this.applyPosition();
   }
@@ -120,8 +130,24 @@ export class CorridorScene extends Phaser.Scene {
   private leave(target: 'deck' | 'flight'): void {
     if (this.leaving) return;
     this.leaving = true;
+    if (target === 'deck') this.registry.set('deck-entry', 'port');
     this.cameras.main.fadeOut(340, 2, 4, 8);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(target));
+  }
+
+  /** Space: a running jump on the move, a two-footed hop standing still. */
+  private jump(moving: boolean): void {
+    if (this.time.now < this.jumpUntil) return;
+    const facing4 = toFacing4(this.facing);
+    const key = moving
+      ? `jump-${facing4}`
+      : `jump-still-${facing4 === 'north' ? 'south' : facing4}`;
+    if (!this.anims.exists(key)) return;
+    this.player.play(key);
+    const anim = this.anims.get(key);
+    if (!anim || anim.frameRate <= 0) return;
+    this.jumpUntil = this.time.now + (anim.getTotalFrames() / anim.frameRate) * 1000;
+    this.jumpStart = this.time.now;
   }
 
   update(_time: number, delta: number): void {
@@ -164,10 +190,11 @@ export class CorridorScene extends Phaser.Scene {
     }
     this.pos.v = Phaser.Math.Clamp(this.pos.v, 0.02, 1.02);
 
+    const jumping = this.time.now < this.jumpUntil;
     if (h !== 0 || v !== 0) {
       this.facing = facingFromVector(h, v * 0.7);
-      this.player.play(running ? runAnimFor(this.facing) : walkAnimFor(this.facing), true);
-    } else {
+      if (!jumping) this.player.play(running ? runAnimFor(this.facing) : walkAnimFor(this.facing), true);
+    } else if (!jumping) {
       this.player.play(idleAnimFor(this.facing), true);
     }
 
@@ -181,11 +208,17 @@ export class CorridorScene extends Phaser.Scene {
 
   private applyPosition(): void {
     const p = projectFloor(CORRIDOR_FLOOR, this.pos);
-    this.player.setPosition(p.x, p.y).setScale(p.scale).setDepth(Math.round(p.y));
+    // A sine lift while a jump animation runs; the shadow stays down.
+    let lift = 0;
+    if (this.time.now < this.jumpUntil && this.jumpUntil > this.jumpStart) {
+      const t = Phaser.Math.Clamp((this.time.now - this.jumpStart) / (this.jumpUntil - this.jumpStart), 0, 1);
+      lift = Math.sin(Math.PI * Phaser.Math.Clamp((t - 0.12) / 0.76, 0, 1)) * 46 * p.scale;
+    }
+    this.player.setPosition(p.x, p.y - Math.round(lift)).setScale(p.scale).setDepth(Math.round(p.y));
     this.shadow
       .setPosition(p.x, p.y - 3)
-      .setScale(p.scale, p.scale)
+      .setScale(p.scale * (1 - lift / 150), p.scale)
       .setDepth(Math.round(p.y) - 1)
-      .setAlpha(Phaser.Math.Linear(0.18, 0.48, this.pos.v));
+      .setAlpha(Phaser.Math.Linear(0.18, 0.48, this.pos.v) * (1 - lift / 120));
   }
 }

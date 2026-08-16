@@ -4,6 +4,7 @@ import {
   DECK_CHAIR,
   DECK_FLOOR,
   DECK_STATIONS,
+  EXIT_LANE_MIN_V,
   isBlocked,
   projectFloor,
   type FloorPosition,
@@ -59,6 +60,7 @@ export class DeckScene extends Phaser.Scene {
   private markers = new Map<string, Phaser.GameObjects.Ellipse>();
   private labels = new Map<string, Phaser.GameObjects.Text>();
   private activeStation: Station | null = null;
+  private hovered = new Set<string>();
   private leaving = false;
   private playingGuitar = false;
   private seated = false;
@@ -131,9 +133,18 @@ export class DeckScene extends Phaser.Scene {
     this.moveTarget = null;
     this.activeStation = null;
     this.facing = 'south';
-    this.pos = { u: 0, v: 0.55 };
+    // Coming back from the corridor puts him at the port entrance rings,
+    // right where he left, instead of teleporting to the middle of the room.
+    if (this.registry.get('deck-entry') === 'port') {
+      this.registry.remove('deck-entry');
+      this.pos = { u: -0.88, v: 0.74 };
+      this.facing = 'east';
+    } else {
+      this.pos = { u: 0, v: 0.55 };
+    }
     this.markers.clear();
     this.labels.clear();
+    this.hovered.clear();
     this.playingGuitar = false;
     this.seated = false;
     this.input.keyboard?.removeAllListeners();
@@ -242,6 +253,8 @@ export class DeckScene extends Phaser.Scene {
       });
       this.markers.set(station.id, marker);
 
+      // Labels live IN the world: their depth is the station's floor depth,
+      // so walking in front of one occludes it like any other furniture.
       const label = this.add
         .text(p.x, p.y - 96 * p.scale, station.label, {
           fontFamily: 'monospace',
@@ -251,7 +264,7 @@ export class DeckScene extends Phaser.Scene {
           padding: { x: 5, y: 3 },
         })
         .setOrigin(0.5)
-        .setDepth(2000)
+        .setDepth(p.y)
         .setResolution(2)
         .setAlpha(0.85);
       label.setInteractive({ useHandCursor: true });
@@ -259,8 +272,30 @@ export class DeckScene extends Phaser.Scene {
         event.stopPropagation();
         this.openSection(station, true);
       });
+      label.on('pointerover', () => {
+        this.hovered.add(station.id);
+        this.refreshStationLook(station);
+      });
+      label.on('pointerout', () => {
+        this.hovered.delete(station.id);
+        this.refreshStationLook(station);
+      });
       this.labels.set(station.id, label);
     }
+  }
+
+  /**
+   * One look for both attention states: hovering a label and standing at the
+   * station do the same thing, including swapping the themed name for what it
+   * actually opens.
+   */
+  private refreshStationLook(station: Station): void {
+    const active = this.hovered.has(station.id) || this.activeStation?.id === station.id;
+    const marker = this.markers.get(station.id);
+    const label = this.labels.get(station.id);
+    marker?.setStrokeStyle(active ? 2 : 0, station.color, 0.9);
+    label?.setAlpha(active ? 1 : 0.72);
+    label?.setText(active ? station.opens.toUpperCase() : station.label);
   }
 
   /** A foreground lip sells the room as a place rather than a backdrop. */
@@ -338,9 +373,9 @@ export class DeckScene extends Phaser.Scene {
     kb.on('keydown-G', () => this.playFlourish('dance'));
     kb.on('keydown-R', () => this.toggleGuitar());
 
+    // Click movement is off: the mouse is for the labels, the keys are for him.
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
       if (this.playingGuitar) this.stopGuitar();
-      this.moveTarget = this.unproject(pointer.worldX, pointer.worldY);
       if (this.debug) {
         const p = this.unproject(pointer.worldX, pointer.worldY);
         console.log(`floor u: ${p.u.toFixed(3)}  v: ${p.v.toFixed(3)}`);
@@ -536,23 +571,27 @@ export class DeckScene extends Phaser.Scene {
       return;
     }
     if (this.busy()) return;
-    if (this.nearChair()) {
-      this.sitDown();
+    if (this.activeStation?.sit) {
+      this.sitDown(this.activeStation);
       return;
     }
     if (this.activeStation) {
       this.openSection(this.activeStation);
+      return;
+    }
+    // Nothing nearby: he presses a button that is not there.
+    const idleKey = `push-${toFacing4(this.facing)}`;
+    if (this.anims.exists(idleKey)) {
+      this.player.play(idleKey);
+      this.busyUntil = this.time.now + this.animDuration(idleKey);
     }
   }
 
-  private nearChair(): boolean {
-    return (
-      Math.hypot(this.pos.u - DECK_CHAIR.standU, (this.pos.v - DECK_CHAIR.standV) * 1.6) < 0.22
-    );
-  }
-
-  /** Takes the pilot's seat: he drops in, then works the console indefinitely. */
-  private sitDown(): void {
+  /**
+   * The Tool Forge IS the pilot's seat: he walks behind it, drops in, works
+   * the holo screen, and the Skills panel arrives while he is still typing.
+   */
+  private sitDown(station?: Station): void {
     if (!this.anims.exists('sit-down') || !this.anims.exists('sit-loop')) return;
     this.seated = true;
     this.moveTarget = null;
@@ -565,8 +604,17 @@ export class DeckScene extends Phaser.Scene {
     this.playSound('interact', 0.4);
     this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
       if (!this.seated) return;
-      this.player.play('sit-loop');
+      const seatedLoop = station && this.anims.exists('sit-screen') ? 'sit-screen' : 'sit-loop';
+      this.player.play(seatedLoop);
       this.busyUntil = 0;
+      if (station) {
+        this.time.delayedCall(900, () => {
+          if (!this.seated) return;
+          this.playSound('chime', 0.4);
+          this.cameras.main.flash(180, 40, 90, 120);
+          this.game.events.emit('arcade:open-section', station.section);
+        });
+      }
     });
   }
 
@@ -596,6 +644,15 @@ export class DeckScene extends Phaser.Scene {
       this.cameras.main.flash(180, 40, 90, 120);
       this.game.events.emit('arcade:open-section', station.section);
     };
+
+    // Turn toward the console he is actually using before the animation.
+    if (!immediate) {
+      const du = station.u - this.pos.u;
+      const dv = (station.v - this.pos.v) * 0.7;
+      if (Math.abs(du) > 0.02 || Math.abs(dv) > 0.02) {
+        this.facing = facingFromVector(du, dv);
+      }
+    }
 
     const facing4 = toFacing4(this.facing);
     const startKey = `screen-start-${facing4}`;
@@ -706,8 +763,9 @@ export class DeckScene extends Phaser.Scene {
       this.pos.v = nextV;
     }
 
-    // Walking off the port side is the way out of the room.
-    if (this.pos.u <= -0.96) {
+    // The way out is the foreground passage, walking in front of the port
+    // consoles. Further back, the console bank blocks the way.
+    if (this.pos.u <= -0.96 && this.pos.v >= EXIT_LANE_MIN_V) {
       this.toCorridor();
       return;
     }
@@ -776,13 +834,18 @@ export class DeckScene extends Phaser.Scene {
       }
     }
 
+    const previous = this.activeStation;
     this.activeStation = bestDistance < NEAR_STATION ? nearest : null;
+    if (previous?.id !== this.activeStation?.id) {
+      if (previous) this.refreshStationLook(previous);
+      if (this.activeStation) this.refreshStationLook(this.activeStation);
+    }
 
-    if (this.nearChair()) {
-      this.prompt.setText('[E]  TAKE THE PILOT SEAT').setVisible(true);
+    if (this.activeStation?.sit) {
+      this.prompt.setText(`[E]  SIT DOWN · ${this.activeStation.opens.toUpperCase()}`).setVisible(true);
     } else if (this.activeStation) {
-      this.prompt.setText(`[E]  OPEN ${this.activeStation.label}`).setVisible(true);
-    } else if (this.pos.u < -0.7) {
+      this.prompt.setText(`[E]  OPEN ${this.activeStation.opens.toUpperCase()}`).setVisible(true);
+    } else if (this.pos.u < -0.7 && this.pos.v >= EXIT_LANE_MIN_V) {
       this.prompt.setText('KEEP WALKING LEFT TO REACH THE CORRIDOR').setVisible(true);
     } else {
       this.prompt.setVisible(false);
