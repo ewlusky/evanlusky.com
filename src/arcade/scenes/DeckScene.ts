@@ -604,16 +604,26 @@ export class DeckScene extends Phaser.Scene {
     this.playSound('interact', 0.4);
     this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
       if (!this.seated) return;
-      const seatedLoop = station && this.anims.exists('sit-screen') ? 'sit-screen' : 'sit-loop';
-      this.player.play(seatedLoop);
-      this.busyUntil = 0;
-      if (station) {
-        this.time.delayedCall(900, () => {
-          if (!this.seated) return;
-          this.playSound('chime', 0.4);
-          this.cameras.main.flash(180, 40, 90, 120);
-          this.game.events.emit('arcade:open-section', station.section);
-        });
+      const toScreen = () => {
+        if (!this.seated) return;
+        const seatedLoop = station && this.anims.exists('sit-screen') ? 'sit-screen' : 'sit-loop';
+        this.player.play(seatedLoop);
+        this.busyUntil = 0;
+        if (station) {
+          this.time.delayedCall(700, () => {
+            if (!this.seated) return;
+            this.playSound('chime', 0.4);
+            this.cameras.main.flash(180, 40, 90, 120);
+            this.game.events.emit('arcade:open-section', station.section);
+          });
+        }
+      };
+      // Recovered straight from PixelLab: he swivels the chair to the console.
+      if (this.anims.exists('sit-swivel')) {
+        this.player.play('sit-swivel');
+        this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, toScreen);
+      } else {
+        toScreen();
       }
     });
   }

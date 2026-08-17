@@ -114,6 +114,7 @@ export function registerCharacterAnims(anims: Phaser.Animations.AnimationManager
   specs.push({ key: 'sit-down', clip: CLIP_SIT_DOWN, frameRate: 12, repeat: 0 });
   specs.push({ key: 'sit-loop', clip: CLIP_SIT_LOOP, frameRate: 8, repeat: -1 });
   specs.push({ key: 'sit-screen', clip: CLIP_SIT_SCREEN, frameRate: 10, repeat: -1 });
+  specs.push({ key: 'sit-swivel', clip: 'base-character-swivels-in-chair-to-face-the-console-east', frameRate: 12, repeat: 0 });
   specs.push({ key: 'sit-stand', clip: CLIP_SIT_STAND, frameRate: 12, repeat: 0 });
   for (const facing of ['east', 'south', 'west']) {
     specs.push({ key: `jump-still-${facing}`, clip: `hop-two-footed-jump-${facing}`, frameRate: 14, repeat: 0 });

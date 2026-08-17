@@ -93,14 +93,20 @@ Sources came from Evan's own `Assets4Site\_UNSORTED\NewIdea` drop. Evan confirme
 
 | Asset | Source | Processing |
 |---|---|---|
-| `assets/characters/red/*.png` (41 strips) + `character.json` | `NewRedShirtAnimations` (PixelLab export, Evan's own character) | `tools/pack-character.mjs`: 352 frames of 256x256 cropped to a single shared 176x181 alpha bounding box so the feet never drift between clips, then packed into one horizontal strip per animation and direction. 2.9 MB source to 2.8 MB packed, roughly 2x less texture memory per frame. |
+| `assets/characters/red/*.png` (70 strips) + `character.json` | PixelLab exports of Evan's own character: `NewRedShirtAnimations` plus the later `NewAnims` drops (sit, jump, screen-interact, guitar sets), plus one 9-frame swivel recovered directly from PixelLab's CDN via the MCP `get_character` frame URLs | `tools/pack-character.mjs` (multi-root; later roots win): every 256x256 frame cropped to a single shared 180x181 alpha bounding box so the feet never drift between clips, then packed into one horizontal strip per animation and direction. Folders whose canvas is not the dominant 256px (three clips at 128/172px) are reported and skipped. |
 | `assets/rooms/deck.png` | `fischerkeltath_plain_empty_2.5d_pixel_art_sci_fi_control_room_...0.png` (1456x816) | ffmpeg lanczos scale to 1280x720 to match the internal canvas. |
+| `assets/rooms/deck-chair.png` | Crop of `deck.png` (the pilot's chair at 889,439, 72x178) | Lifted out so the character can y-sort behind and in front of it. |
 | `assets/rooms/corridor.png` | `fischerkeltath_2.5d_orthographic_pixel_art_video_game_empty_h_...2.png` (1344x896) | Scaled to 1280x853 then cropped to 1280x720 from y=100 to sit the vanishing point correctly. |
 | `assets/parallax/*.png` | `synthwave` pixel pack (back, mountains, palms-back, palms, road) | Copied unmodified. Pack ships `license.pdf`. |
 | `assets/audio/deck-theme.ogg` | `NightCity.wav` (48.5 MB) | ffmpeg libvorbis q3 stereo, 2.4 MB. |
 | `assets/audio/flight-theme.ogg` | `RunningFree.wav` (41.4 MB) | ffmpeg libvorbis q3 stereo, 2.2 MB. |
 | `assets/audio/chime.ogg` | `Magic Fx 7.ogg` | Trimmed to 3 s, libvorbis q2, 40 KB. |
+| `assets/audio/interact.ogg`, `transition.ogg` | Same sci-fi FX pack as the chime | Trimmed and encoded libvorbis q2. |
+| `assets/audio/guitar-loop.ogg`, `guitar-summon-sfx.ogg` | Evan's own guitar course recordings (`C:\Projekts\Muzak\UdemyMusicTheoryGuitar\attached_files`) | Trimmed to a loopable phrase and a short flourish, libvorbis q3. |
+| `og.png` (site share card) | Screenshot of the live DeckScene: Evan's character playing guitar mid-deck | Renderer snapshot cropped to 1200x630. All content is from the assets above. |
 
-Generated at runtime rather than shipped: the viewport star field and nebulae in `DeckScene`, and the ship sprite in `FlightScene`.
+The character source folders have since moved: the asset library lives at `C:\Users\14438\Documents\Creative\Asset-Library\Site-Assets` and the animation drops at `C:\Users\14438\Documents\Creative\Animation\NewAnims`.
+
+Generated at runtime rather than shipped: the viewport star field and nebulae in `DeckScene`, and the ship, laser, hovercar, and explosion art in `FlightScene`.
 
 **Not used.** The `NewIdea` mp4 loops were transcoded and tested, but Phaser 4 Video objects did not render in the verification browser and Phaser 4 ignores the v3 geometry-mask API used to clip them to the window. The star field replaces them. The source loops remain in `NewIdea` if that turns out to be an environment quirk rather than an engine change.

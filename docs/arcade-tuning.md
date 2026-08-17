@@ -32,10 +32,14 @@ The scene converts those to a screen position, a sprite scale, and a draw order.
 
 ```ts
 export const DECK_BLOCKERS: Blocker[] = [
-  { u0: -1.1, u1: 1.1, v0: -0.5, v1: 0.13 },  // back console bank
-  { u0: 0.58, u1: 0.86, v0: 0.26, v1: 0.46 }, // pilot chair
+  { u0: -1.1, u1: 1.1, v0: -0.5, v1: 0.13 },   // back console bank
+  { u0: -1.2, u1: -0.55, v0: 0.1, v1: 0.6 },   // port console bank
+  { u0: 0.6, u1: 0.84, v0: 0.28, v1: 0.46 },   // pilot chair
 ];
 ```
+
+The port bank plus `EXIT_LANE_MIN_V` together shape the exit: the only way off
+to port is the foreground passage, walking in front of those computers.
 
 `u0`/`u1` are the left and right edges, `v0`/`v1` the far and near edges. Order does not matter and they can overlap. Collision is resolved one axis at a time, so walking diagonally into a corner slides along it instead of sticking.
 
@@ -72,6 +76,24 @@ const FLIP = {
 ```
 
 The lift is multiplied by his depth scale, so a jump at the front of the room is automatically bigger than one at the back. If he looks like he floats before the tuck, raise `liftStart`. If he hangs after landing, lower `liftEnd`.
+
+## The pilot's chair
+
+The Tool Forge station IS the chair (`sit: true` in `DECK_STATIONS`). Its
+geometry lives in `DECK_CHAIR` in the same file: where the crop came from in
+the room art, the screen y it y-sorts against, where he stands to be offered
+the seat, and where he sits. Pressing E there runs the full chain:
+`sit-down` &rarr; `sit-swivel` (he turns the chair to the console) &rarr;
+`sit-screen`, and the Skills panel arrives while he is still typing. E again
+stands him back up.
+
+## Controls
+
+WASD or arrows to walk (any keypress scrolls the game into view first),
+Space to flip on the deck and jump in the corridor, E or Enter to use, G to dance,
+R to summon or put away the guitar. In the hangar: arrows fly, Space fires,
+Q or ESC docks. Clicking a station label opens its section directly; clicking
+the floor does nothing on purpose.
 
 ## Where the animations come from
 

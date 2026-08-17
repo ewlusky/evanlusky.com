@@ -283,6 +283,10 @@
     "base-character-stays-seated-in-the-sci-fi-pilots-se-west": {
       "file": "base-character-stays-seated-in-the-sci-fi-pilots-se-west.png",
       "frames": 9
+    },
+    "base-character-swivels-in-chair-to-face-the-console-east": {
+      "file": "base-character-swivels-in-chair-to-face-the-console-east.png",
+      "frames": 9
     }
   },
   "footPivot": {
