@@ -38,7 +38,7 @@
     },
     "hop-idle-north": {
       "file": "hop-idle-north.png",
-      "frames": 8
+      "frames": 9
     },
     "hop-idle-tired-east": {
       "file": "hop-idle-tired-east.png",
@@ -172,6 +172,42 @@
       "file": "base-walking-west.png",
       "frames": 8
     },
+    "hop-idle-east": {
+      "file": "hop-idle-east.png",
+      "frames": 9
+    },
+    "hop-idle-south": {
+      "file": "hop-idle-south.png",
+      "frames": 9
+    },
+    "hop-idle-west": {
+      "file": "hop-idle-west.png",
+      "frames": 9
+    },
+    "hop-picking-up-south": {
+      "file": "hop-picking-up-south.png",
+      "frames": 5
+    },
+    "hop-push-object-south": {
+      "file": "hop-push-object-south.png",
+      "frames": 6
+    },
+    "hop-the-man-stands-still-for-a-brief-moment-before-east": {
+      "file": "hop-the-man-stands-still-for-a-brief-moment-before-east.png",
+      "frames": 9
+    },
+    "hop-the-man-stands-still-for-a-brief-moment-before-north": {
+      "file": "hop-the-man-stands-still-for-a-brief-moment-before-north.png",
+      "frames": 9
+    },
+    "hop-the-man-stands-still-for-a-brief-moment-before-south": {
+      "file": "hop-the-man-stands-still-for-a-brief-moment-before-south.png",
+      "frames": 9
+    },
+    "hop-the-man-stands-still-for-a-brief-moment-before-west": {
+      "file": "hop-the-man-stands-still-for-a-brief-moment-before-west.png",
+      "frames": 9
+    },
     "hop-character-sits-back-in-the-sci-fi-pilots-seat-east": {
       "file": "hop-character-sits-back-in-the-sci-fi-pilots-seat-east.png",
       "frames": 8
@@ -224,6 +260,18 @@
       "file": "hop-screen-interact-loop-west.png",
       "frames": 9
     },
+    "hop-sit-and-bring-up-console-east": {
+      "file": "hop-sit-and-bring-up-console-east.png",
+      "frames": 8
+    },
+    "hop-sit-and-bring-up-console-north": {
+      "file": "hop-sit-and-bring-up-console-north.png",
+      "frames": 9
+    },
+    "hop-sit-and-bring-up-console-north-east": {
+      "file": "hop-sit-and-bring-up-console-north-east.png",
+      "frames": 17
+    },
     "hop-start-screen-interact-east": {
       "file": "hop-start-screen-interact-east.png",
       "frames": 9
@@ -242,6 +290,10 @@
     },
     "hop-two-footed-jump-east": {
       "file": "hop-two-footed-jump-east.png",
+      "frames": 7
+    },
+    "hop-two-footed-jump-north": {
+      "file": "hop-two-footed-jump-north.png",
       "frames": 7
     },
     "hop-two-footed-jump-south": {
@@ -282,6 +334,14 @@
     },
     "base-character-stays-seated-in-the-sci-fi-pilots-se-west": {
       "file": "base-character-stays-seated-in-the-sci-fi-pilots-se-west.png",
+      "frames": 9
+    },
+    "base-seated-interact-with-console-loop-north-east": {
+      "file": "base-seated-interact-with-console-loop-north-east.png",
+      "frames": 9
+    },
+    "base-seated-pulls-out-console-north-east": {
+      "file": "base-seated-pulls-out-console-north-east.png",
       "frames": 9
     },
     "base-character-swivels-in-chair-to-face-the-console-east": {

@@ -5,6 +5,7 @@ import { BootScene } from './scenes/BootScene';
 import { DeckScene } from './scenes/DeckScene';
 import { CorridorScene } from './scenes/CorridorScene';
 import { FlightScene } from './scenes/FlightScene';
+import { AudioHudScene } from './scenes/AudioHudScene';
 import { createPanel } from './panel';
 
 const host = document.getElementById('arcade');
@@ -25,7 +26,7 @@ if (host && stage) {
       width: 1280,
       height: 720,
     },
-    scene: [BootScene, DeckScene, CorridorScene, FlightScene],
+    scene: [BootScene, DeckScene, CorridorScene, FlightScene, AudioHudScene],
   });
 
   game.events.on('arcade:open-section', (sectionId: string) => panel.open(sectionId));

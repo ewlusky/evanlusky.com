@@ -39,10 +39,15 @@ export class BootScene extends Phaser.Scene {
     this.load.audio('transition', 'assets/audio/transition.ogg');
     this.load.audio('guitar-summon-sfx', 'assets/audio/guitar-summon-sfx.ogg');
     this.load.audio('guitar-loop', 'assets/audio/guitar-loop.ogg');
+    this.load.audio('explosion-8bit', 'assets/audio/explosion-8bit.ogg');
+    this.load.audio('beam-charge', 'assets/audio/beam-charge.ogg');
+    this.load.audio('beam-fire', 'assets/audio/beam-fire.ogg');
 
     this.load.once(Phaser.Loader.Events.COMPLETE, () => {
       registerCharacterAnims(this.anims, manifest);
       this.registry.set('char-manifest', manifest);
+      // The mute toggles live in their own scene so they float over every room.
+      this.scene.launch('audio-hud');
       this.scene.start('deck');
     });
     this.load.start();

@@ -104,6 +104,8 @@ export interface Station {
   color: number;
   /** He sits down at this one instead of standing at it. */
   sit?: boolean;
+  /** How far away E still works, in floor units. Defaults to the scene's standard. */
+  reach?: number;
 }
 
 /**
@@ -130,6 +132,9 @@ export const DECK_BLOCKERS: Blocker[] = [
   { u0: -1.2, u1: -0.55, v0: 0.1, v1: 0.6 },
   // The pilot's chair. He walks around it, and behind it when he is further back.
   { u0: 0.6, u1: 0.84, v0: 0.28, v1: 0.46 },
+  // The starboard console bank: the Learning Spire's own hardware. He stops
+  // beside it and works it from the floor instead of standing in it.
+  { u0: 0.84, u1: 1.3, v0: -0.5, v1: 0.52 },
 ];
 
 /** Leaving to port only works in front of the console bank. */
@@ -144,8 +149,11 @@ export const DECK_STATIONS: Station[] = [
   { id: 'experience', label: 'SYSTEMS CORE', opens: 'Experience', section: 'experience', u: -0.62, v: 0.22, color: 0xffc36a },
   // The pilot's chair IS the Tool Forge: he sits down at it to open Skills.
   { id: 'skills', label: 'TOOL FORGE', opens: 'Skills', section: 'skills', u: 0.72, v: 0.4, color: 0xb6a2ff, sit: true },
-  { id: 'projects', label: 'ARCHIVE GATE', opens: 'Projects', section: 'projects', u: -0.78, v: 0.72, color: 0x7dffb0 },
-  // The computer console to starboard of the chair.
-  { id: 'education', label: 'LEARNING SPIRE', opens: 'Education + research', section: 'education', u: 0.88, v: 0.58, color: 0xff9ecb },
+  // Long reach: he works the gate from the open floor beside it rather than
+  // from inside the port console bank.
+  { id: 'projects', label: 'ARCHIVE GATE', opens: 'Projects', section: 'projects', u: -0.78, v: 0.72, color: 0x7dffb0, reach: 0.34 },
+  // The computer console to starboard of the chair. Its own blocker keeps him
+  // on the floor beside it, so the reach spans that gap.
+  { id: 'education', label: 'LEARNING SPIRE', opens: 'Education + research', section: 'education', u: 0.88, v: 0.58, color: 0xff9ecb, reach: 0.26 },
   { id: 'contact', label: 'COMMS RELAY', opens: 'Contact', section: 'contact', u: 0, v: 0.95, color: 0xffe66e },
 ];

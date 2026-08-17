@@ -1,7 +1,18 @@
 import Phaser from 'phaser';
+import { REG_MUSIC_CONSENT, REG_MUSIC_ON, REG_SFX_ON } from '../audio';
 
 const HORIZON = 424;
 const ROAD_TOP = 560;
+
+/**
+ * The beam cannon: half a second spooling up, a sustained sweep you steer
+ * with the ship, then a recharge before the next shot.
+ */
+const BEAM = {
+  chargeMs: 520,
+  fireMs: 1500,
+  cooldownMs: 3200,
+};
 
 /** Layer scroll rates in pixels per second. Depth is sold by the spread. */
 const RATES = {
@@ -31,10 +42,14 @@ export class FlightScene extends Phaser.Scene {
   private boostFactor = 1;
   private theme?: Phaser.Sound.BaseSound;
   private leaving = false;
-  private lasers: Phaser.GameObjects.Image[] = [];
   private cars: Phaser.GameObjects.Image[] = [];
   private explosions!: Phaser.GameObjects.Particles.ParticleEmitter;
-  private lastShot = 0;
+  private beamState: 'ready' | 'charging' | 'firing' | 'cooldown' = 'ready';
+  private beamUntil = 0;
+  private beamCore?: Phaser.GameObjects.Rectangle;
+  private beamGlow?: Phaser.GameObjects.Rectangle;
+  private chargeOrb!: Phaser.GameObjects.Arc;
+  private beamText!: Phaser.GameObjects.Text;
   private zapped = 0;
   private scoreText!: Phaser.GameObjects.Text;
   private carTimer?: Phaser.Time.TimerEvent;
@@ -51,9 +66,11 @@ export class FlightScene extends Phaser.Scene {
     this.shipX = 300;
     this.shipY = 300;
     this.boostFactor = 1;
-    this.lasers = [];
     this.cars = [];
-    this.lastShot = 0;
+    this.beamState = 'ready';
+    this.beamUntil = 0;
+    this.beamCore = undefined;
+    this.beamGlow = undefined;
     this.zapped = 0;
     this.input.keyboard?.removeAllListeners();
 
@@ -61,7 +78,6 @@ export class FlightScene extends Phaser.Scene {
 
     this.makeShipTexture();
     this.makeSparkTexture();
-    this.makeLaserTexture();
     this.makeCarTexture();
 
     // Tile wider than the canvas so only one sun is ever on screen.
@@ -106,6 +122,9 @@ export class FlightScene extends Phaser.Scene {
 
     this.ship = this.add.sprite(this.shipX, this.shipY, 'ship').setDepth(6).setScale(2.2);
 
+    // The muzzle glow that swells while the beam spools up.
+    this.chargeOrb = this.add.circle(0, 0, 9, 0x6fe7ff, 0.9).setDepth(6.4).setBlendMode(Phaser.BlendModes.ADD).setAlpha(0);
+
     this.explosions = this.add.particles(0, 0, 'spark', {
       speed: { min: 60, max: 240 },
       lifespan: { min: 240, max: 620 },
@@ -120,6 +139,11 @@ export class FlightScene extends Phaser.Scene {
 
     this.scoreText = this.add
       .text(this.scale.width / 2, 14, '', { fontFamily: 'monospace', fontSize: '13px', color: '#ffe66e' })
+      .setOrigin(0.5, 0)
+      .setDepth(101)
+      .setResolution(2);
+    this.beamText = this.add
+      .text(this.scale.width / 2, 36, '', { fontFamily: 'monospace', fontSize: '11px', color: '#6fe7ff' })
       .setOrigin(0.5, 0)
       .setDepth(101)
       .setResolution(2);
@@ -151,7 +175,7 @@ export class FlightScene extends Phaser.Scene {
       .setDepth(100)
       .setResolution(2);
     this.add
-      .text(this.scale.width - 18, 14, 'WASD FLY · SPACE LASERS · SHIFT BOOST · FLY RIGHT TO DOCK', {
+      .text(this.scale.width - 18, 14, 'WASD FLY · SPACE BEAM · SHIFT BOOST · FLY RIGHT TO DOCK', {
         fontFamily: 'monospace',
         fontSize: '11px',
         color: '#7d8fb5',
@@ -193,7 +217,7 @@ export class FlightScene extends Phaser.Scene {
     ) as FlightScene['keys'];
     kb.on('keydown-Q', () => this.leave('deck'));
     kb.on('keydown-ESC', () => this.leave('deck'));
-    kb.on('keydown-SPACE', () => this.fireLaser());
+    kb.on('keydown-SPACE', () => this.startBeamCharge());
     kb.addCapture([K.SPACE, K.UP, K.DOWN, K.LEFT, K.RIGHT]);
 
     this.startTheme();
@@ -254,15 +278,6 @@ export class FlightScene extends Phaser.Scene {
     g.destroy();
   }
 
-  private makeLaserTexture(): void {
-    if (this.textures.exists('laser')) return;
-    const g = this.make.graphics({ x: 0, y: 0 });
-    g.fillStyle(0x6fe7ff).fillRect(0, 0, 16, 4);
-    g.fillStyle(0xffffff).fillRect(2, 1, 12, 2);
-    g.generateTexture('laser', 16, 4);
-    g.destroy();
-  }
-
   /** Oncoming synthwave traffic: chunky hover-sedans with underglow. */
   private makeCarTexture(): void {
     if (this.textures.exists('hovercar')) return;
@@ -279,12 +294,43 @@ export class FlightScene extends Phaser.Scene {
     g.destroy();
   }
 
-  private fireLaser(): void {
-    if (this.leaving || this.time.now - this.lastShot < 170) return;
-    this.lastShot = this.time.now;
-    const bolt = this.add.image(this.ship.x + 44, this.ship.y + 4, 'laser').setDepth(5.5).setScale(2);
-    this.lasers.push(bolt);
-    if (this.cache.audio.exists('blip')) this.sound.play('blip', { volume: 0.12, rate: 1.6 });
+  /** Plays a sound only if it made it into the bundle and SFX are on. */
+  private playSfx(key: string, volume: number): void {
+    if (this.registry.get(REG_SFX_ON) === false) return;
+    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
+  }
+
+  private startBeamCharge(): void {
+    if (this.leaving || this.beamState !== 'ready') return;
+    this.beamState = 'charging';
+    this.beamUntil = this.time.now + BEAM.chargeMs;
+    this.playSfx('beam-charge', 0.5);
+    this.chargeOrb.setAlpha(0.25).setScale(0.4);
+    this.tweens.add({ targets: this.chargeOrb, alpha: 0.95, scale: 1.5, duration: BEAM.chargeMs });
+  }
+
+  private fireBeam(): void {
+    this.beamState = 'firing';
+    this.beamUntil = this.time.now + BEAM.fireMs;
+    this.chargeOrb.setAlpha(0);
+    this.tweens.killTweensOf(this.chargeOrb);
+    const { width } = this.scale;
+    this.beamGlow = this.add
+      .rectangle(0, 0, width, 22, 0x6fe7ff, 0.4)
+      .setOrigin(0, 0.5)
+      .setDepth(5.5)
+      .setBlendMode(Phaser.BlendModes.ADD);
+    this.beamCore = this.add.rectangle(0, 0, width, 6, 0xffffff, 0.95).setOrigin(0, 0.5).setDepth(5.6);
+    this.playSfx('beam-fire', 0.55);
+  }
+
+  private endBeam(): void {
+    this.beamCore?.destroy();
+    this.beamGlow?.destroy();
+    this.beamCore = undefined;
+    this.beamGlow = undefined;
+    this.beamState = 'cooldown';
+    this.beamUntil = this.time.now + BEAM.cooldownMs;
   }
 
   private spawnCar(): void {
@@ -305,9 +351,13 @@ export class FlightScene extends Phaser.Scene {
   private explode(x: number, y: number): void {
     this.explosions.explode(22, x, y);
     this.cameras.main.shake(90, 0.003);
+    this.playSfx('explosion-8bit', 0.4);
   }
 
   private startTheme(): void {
+    // By the time anyone reaches the hangar they have long since moved, but
+    // the consent flag still gates the theme for safety.
+    if (!this.registry.get(REG_MUSIC_CONSENT)) return;
     if (this.sound.locked) {
       this.sound.once(Phaser.Sound.Events.UNLOCKED, () => this.startTheme());
       return;
@@ -320,6 +370,9 @@ export class FlightScene extends Phaser.Scene {
     if (this.leaving) return;
     this.leaving = true;
     this.theme?.stop();
+    this.sound.stopByKey('beam-fire');
+    this.endBeam();
+    this.beamState = 'ready';
     this.cameras.main.fadeOut(360, 2, 4, 8);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(target));
   }
@@ -327,6 +380,10 @@ export class FlightScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const seconds = delta / 1000;
     const k = this.keys;
+
+    const musicOn = this.registry.get(REG_MUSIC_ON) !== false;
+    const theme = this.theme as (Phaser.Sound.BaseSound & { setVolume?: (v: number) => void }) | undefined;
+    theme?.setVolume?.(musicOn ? 0.34 : 0);
 
     const boosting = k.boost.isDown;
     this.boostFactor = Phaser.Math.Linear(this.boostFactor, boosting ? 2.1 : 1, 0.08);
@@ -368,14 +425,20 @@ export class FlightScene extends Phaser.Scene {
     this.palms.tilePositionX += RATES.palms * f;
     this.road.tilePositionX += RATES.road * f;
 
-    // Lasers out, traffic in, and the arithmetic where they meet.
-    for (let i = this.lasers.length - 1; i >= 0; i--) {
-      const bolt = this.lasers[i];
-      bolt.x += 980 * seconds;
-      if (bolt.x > this.scale.width + 60) {
-        bolt.destroy();
-        this.lasers.splice(i, 1);
-      }
+    // The beam cannon runs its little life cycle around the ship's nose.
+    const nose = { x: this.ship.x + 44, y: this.ship.y + 4 };
+    this.chargeOrb.setPosition(nose.x, nose.y);
+    if (this.beamState === 'charging' && this.time.now >= this.beamUntil) {
+      this.fireBeam();
+    } else if (this.beamState === 'firing') {
+      // The beam rides the nose, so climbing and diving sweeps it across the
+      // traffic. A light flicker keeps it alive without straining anyone.
+      const flicker = 1 + Math.sin(this.time.now / 24) * 0.12;
+      this.beamCore?.setPosition(nose.x, nose.y).setDisplaySize(this.scale.width - nose.x, 6 * flicker);
+      this.beamGlow?.setPosition(nose.x, nose.y).setDisplaySize(this.scale.width - nose.x, 22 * flicker);
+      if (this.time.now >= this.beamUntil) this.endBeam();
+    } else if (this.beamState === 'cooldown' && this.time.now >= this.beamUntil) {
+      this.beamState = 'ready';
     }
 
     for (let i = this.cars.length - 1; i >= 0; i--) {
@@ -389,23 +452,14 @@ export class FlightScene extends Phaser.Scene {
         continue;
       }
 
-      // Laser hit: the whole point of having lasers.
-      let destroyed = false;
-      for (let j = this.lasers.length - 1; j >= 0; j--) {
-        const bolt = this.lasers[j];
-        if (Math.abs(bolt.x - car.x) < 52 && Math.abs(bolt.y - car.y) < 24) {
-          this.explode(car.x, car.y);
-          bolt.destroy();
-          this.lasers.splice(j, 1);
-          car.destroy();
-          this.cars.splice(i, 1);
-          this.zapped += 1;
-          if (this.cache.audio.exists('chime')) this.sound.play('chime', { volume: 0.25, rate: 1.4 });
-          destroyed = true;
-          break;
-        }
+      // Anything the beam touches goes up.
+      if (this.beamState === 'firing' && car.x > nose.x + 20 && Math.abs(car.y - nose.y) < 26) {
+        this.explode(car.x, car.y);
+        car.destroy();
+        this.cars.splice(i, 1);
+        this.zapped += 1;
+        continue;
       }
-      if (destroyed) continue;
 
       // Clipping a car stings but costs nothing except the shake.
       if (Math.abs(car.x - this.ship.x) < 48 && Math.abs(car.y - this.ship.y) < 22) {
@@ -417,5 +471,12 @@ export class FlightScene extends Phaser.Scene {
     }
 
     this.scoreText.setText(this.zapped > 0 ? `CARS ZAPPED · ${this.zapped}` : 'TRAFFIC AHEAD · SPACE TO FIRE');
+    const beamLabel = {
+      ready: 'BEAM READY',
+      charging: 'CHARGING…',
+      firing: 'FIRING',
+      cooldown: 'RECHARGING…',
+    }[this.beamState];
+    this.beamText.setText(beamLabel).setColor(this.beamState === 'ready' ? '#6fe7ff' : '#7d8fb5');
   }
 }

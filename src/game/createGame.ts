@@ -7,6 +7,7 @@ import { BootScene } from '../arcade/scenes/BootScene';
 import { DeckScene } from '../arcade/scenes/DeckScene';
 import { CorridorScene } from '../arcade/scenes/CorridorScene';
 import { FlightScene } from '../arcade/scenes/FlightScene';
+import { AudioHudScene } from '../arcade/scenes/AudioHudScene';
 
 interface CreateGameOptions {
   readonly parent: string;
@@ -54,13 +55,15 @@ export function createPortfolioGame(options: CreateGameOptions): PortfolioGameCo
       width: 1280,
       height: 720,
     },
-    scene: [BootScene, DeckScene, CorridorScene, FlightScene],
+    // The audio HUD is listed last so its floating toggles render above every room.
+    scene: [BootScene, DeckScene, CorridorScene, FlightScene, AudioHudScene],
   });
 
   if (import.meta.env.DEV) {
     (window as unknown as Record<string, unknown>).__embedded = game;
   }
 
+  let audioPaused = false;
   const virtualInput: VirtualInputState = { up: false, down: false, left: false, right: false };
   game.registry.set('virtual-input', virtualInput);
   game.registry.set('reduced-motion', options.reducedMotion);
@@ -114,7 +117,9 @@ export function createPortfolioGame(options: CreateGameOptions): PortfolioGameCo
     interact() {
       activeDeck()?.interactNearby();
     },
-    setPaused(isPaused: boolean) {
+    // The résumé dialog pauses the scenes but leaves the music playing;
+    // hiding the game entirely (pauseAudio) silences everything.
+    setPaused(isPaused: boolean, pauseAudio = false) {
       virtualInput.up = virtualInput.down = virtualInput.left = virtualInput.right = false;
       for (const scene of game.scene.getScenes(true)) {
         if (isPaused) scene.scene.pause();
@@ -124,10 +129,12 @@ export function createPortfolioGame(options: CreateGameOptions): PortfolioGameCo
           if (scene.scene.isPaused()) scene.scene.resume();
         }
       }
-      if (isPaused) {
+      if (isPaused && pauseAudio) {
         game.sound.pauseAll();
-      } else {
+        audioPaused = true;
+      } else if (!isPaused && audioPaused) {
         game.sound.resumeAll();
+        audioPaused = false;
       }
     },
     destroy() {

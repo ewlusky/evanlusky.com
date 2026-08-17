@@ -30,7 +30,14 @@ const CLIP_PREFIX = {
 } as const;
 
 export const CLIP_DANCE = 'hop-terrible-dance-south';
-/** The chair set. He drops into the seat facing away, then works it. */
+/**
+ * The chair set. The full take sits him down and brings the console up in one
+ * continuous north-east shot, then the seated loop keeps him working it.
+ * The east clips remain as the fallback chain if the take is missing.
+ */
+export const CLIP_SIT_CONSOLE = 'hop-sit-and-bring-up-console-north-east';
+export const CLIP_SIT_CONSOLE_START_SEATED = 'base-seated-pulls-out-console-north-east';
+export const CLIP_SIT_CONSOLE_LOOP = 'base-seated-interact-with-console-loop-north-east';
 export const CLIP_SIT_DOWN = 'hop-character-sits-back-in-the-sci-fi-pilots-seat-east';
 export const CLIP_SIT_LOOP = 'base-character-stays-seated-in-the-sci-fi-pilots-se-east';
 export const CLIP_SIT_SCREEN = 'base-character-begins-with-screen-already-active-an-east';
@@ -114,8 +121,11 @@ export function registerCharacterAnims(anims: Phaser.Animations.AnimationManager
   specs.push({ key: 'sit-down', clip: CLIP_SIT_DOWN, frameRate: 12, repeat: 0 });
   specs.push({ key: 'sit-loop', clip: CLIP_SIT_LOOP, frameRate: 8, repeat: -1 });
   specs.push({ key: 'sit-screen', clip: CLIP_SIT_SCREEN, frameRate: 10, repeat: -1 });
-  specs.push({ key: 'sit-swivel', clip: 'base-character-swivels-in-chair-to-face-the-console-east', frameRate: 12, repeat: 0 });
   specs.push({ key: 'sit-stand', clip: CLIP_SIT_STAND, frameRate: 12, repeat: 0 });
+  // Prefer the full stand-to-seated take; fall back to the already-seated one.
+  const sitConsoleClip = manifest.clips[CLIP_SIT_CONSOLE] ? CLIP_SIT_CONSOLE : CLIP_SIT_CONSOLE_START_SEATED;
+  specs.push({ key: 'sit-console', clip: sitConsoleClip, frameRate: 12, repeat: 0 });
+  specs.push({ key: 'sit-console-loop', clip: CLIP_SIT_CONSOLE_LOOP, frameRate: 10, repeat: -1 });
   for (const facing of ['east', 'south', 'west']) {
     specs.push({ key: `jump-still-${facing}`, clip: `hop-two-footed-jump-${facing}`, frameRate: 14, repeat: 0 });
   }
@@ -137,6 +147,11 @@ export function registerCharacterAnims(anims: Phaser.Animations.AnimationManager
       repeat: spec.repeat,
     });
   }
+}
+
+/** True when the registered sit-console animation starts from standing. */
+export function sitConsoleIsFullTake(manifest: CharacterManifest): boolean {
+  return Boolean(manifest.clips[CLIP_SIT_CONSOLE]);
 }
 
 /** Walk animations exist for all eight facings; everything else falls back to four. */

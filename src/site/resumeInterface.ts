@@ -10,7 +10,8 @@ export type VirtualDirection = 'up' | 'down' | 'left' | 'right';
 export interface GameInputControls {
   focusCanvas(): void;
   interact(): void;
-  setPaused(isPaused: boolean): void;
+  /** pauseAudio also silences the music; a plain pause keeps it playing. */
+  setPaused(isPaused: boolean, pauseAudio?: boolean): void;
   setVirtualDirection(direction: VirtualDirection, isPressed: boolean): void;
 }
 
@@ -328,7 +329,7 @@ export function createResumeInterface(
       controls?.setPaused(false);
       controls?.focusCanvas();
     } else {
-      controls?.setPaused(true);
+      controls?.setPaused(true, true);
       resumeContent.focus();
     }
   });
@@ -361,7 +362,7 @@ export function createResumeInterface(
     setGameControls(nextControls) {
       controls = nextControls;
       if (gameStage.hidden) {
-        controls.setPaused(true);
+        controls.setPaused(true, true);
       }
     },
     setGameStatus(message, state = 'loading') {

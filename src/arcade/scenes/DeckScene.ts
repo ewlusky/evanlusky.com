@@ -14,11 +14,13 @@ import {
   facingFromVector,
   idleAnimFor,
   runAnimFor,
+  sitConsoleIsFullTake,
   toFacing4,
   walkAnimFor,
   type CharacterManifest,
   type Facing8,
 } from '../character';
+import { REG_MUSIC_CONSENT, REG_MUSIC_ON, REG_SFX_ON } from '../audio';
 
 const WALK_U = 0.62;
 const WALK_V = 0.42;
@@ -96,6 +98,8 @@ export class DeckScene extends Phaser.Scene {
     this.buildForeground();
     this.buildHud();
     this.bindInput();
+    // No self-starting soundtrack: the theme waits for the first deliberate
+    // input (movement, a click, an action key) and then keeps going.
     this.startTheme();
     this.applyPosition();
     if (this.debug) this.buildDebugOverlay();
@@ -375,6 +379,7 @@ export class DeckScene extends Phaser.Scene {
 
     // Click movement is off: the mouse is for the labels, the keys are for him.
     this.input.on('pointerdown', (pointer: Phaser.Input.Pointer) => {
+      this.ensureMusic();
       if (this.playingGuitar) this.stopGuitar();
       if (this.debug) {
         const p = this.unproject(pointer.worldX, pointer.worldY);
@@ -451,7 +456,14 @@ export class DeckScene extends Phaser.Scene {
     return { u, v };
   }
 
+  /** The first deliberate input grants consent, then the theme starts. */
+  private ensureMusic(): void {
+    if (!this.registry.get(REG_MUSIC_CONSENT)) this.registry.set(REG_MUSIC_CONSENT, true);
+    this.startTheme();
+  }
+
   private startTheme(): void {
+    if (!this.registry.get(REG_MUSIC_CONSENT)) return;
     if (this.sound.locked) {
       this.sound.once(Phaser.Sound.Events.UNLOCKED, () => this.startTheme());
       return;
@@ -459,6 +471,18 @@ export class DeckScene extends Phaser.Scene {
     if (this.theme?.isPlaying) return;
     this.theme = this.sound.add('deck-theme', { loop: true, volume: 0.32 });
     this.theme.play();
+  }
+
+  /**
+   * Volumes are applied every frame from the shared flags: the mute toggle
+   * silences the music without losing its place, and the guitar ducks the
+   * theme underneath its own loop.
+   */
+  private applyMusicVolumes(): void {
+    const musicOn = this.registry.get(REG_MUSIC_ON) !== false;
+    this.setThemeVolume(musicOn ? (this.playingGuitar ? 0.08 : 0.32) : 0);
+    const loop = this.guitarLoop as (Phaser.Sound.BaseSound & { setVolume?: (v: number) => void }) | undefined;
+    loop?.setVolume?.(musicOn ? 0.5 : 0);
   }
 
   private busy(): boolean {
@@ -473,6 +497,7 @@ export class DeckScene extends Phaser.Scene {
   }
 
   private playFlourish(kind: 'flip' | 'dance'): void {
+    this.ensureMusic();
     if (this.busy()) return;
     if (this.playingGuitar) this.stopGuitar();
     const facing4 = toFacing4(this.facing);
@@ -518,6 +543,7 @@ export class DeckScene extends Phaser.Scene {
    * animation loop rather than a fixed number of repeats.
    */
   private toggleGuitar(): void {
+    this.ensureMusic();
     if (this.playingGuitar) {
       this.stopGuitar();
       return;
@@ -539,7 +565,6 @@ export class DeckScene extends Phaser.Scene {
       if (this.cache.audio.exists('guitar-loop')) {
         this.guitarLoop = this.sound.add('guitar-loop', { loop: true, volume: 0.5 });
         this.guitarLoop.play();
-        this.setThemeVolume(0.08);
       }
     });
   }
@@ -549,7 +574,6 @@ export class DeckScene extends Phaser.Scene {
     this.playingGuitar = false;
     this.guitarLoop?.stop();
     this.guitarLoop = undefined;
-    this.setThemeVolume(0.32);
     this.busyUntil = 0;
     this.player.play(idleAnimFor(this.facing), true);
   }
@@ -560,12 +584,14 @@ export class DeckScene extends Phaser.Scene {
     sound?.setVolume?.(value);
   }
 
-  /** Plays a sound only if it actually made it into the bundle. */
+  /** Plays a sound only if it made it into the bundle and SFX are on. */
   private playSound(key: string, volume: number): void {
+    if (this.registry.get(REG_SFX_ON) === false) return;
     if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
   }
 
   private tryInteract(): void {
+    this.ensureMusic();
     if (this.seated) {
       this.standUp();
       return;
@@ -588,43 +614,58 @@ export class DeckScene extends Phaser.Scene {
   }
 
   /**
-   * The Tool Forge IS the pilot's seat: he walks behind it, drops in, works
-   * the holo screen, and the Skills panel arrives while he is still typing.
+   * The Tool Forge IS the pilot's seat: he walks behind it, sits down and
+   * brings the console up in one continuous take, and the Skills panel
+   * arrives while he is still working the pad.
    */
   private sitDown(station?: Station): void {
-    if (!this.anims.exists('sit-down') || !this.anims.exists('sit-loop')) return;
+    const consoleChain = this.anims.exists('sit-console') && this.anims.exists('sit-console-loop');
+    if (!consoleChain && (!this.anims.exists('sit-down') || !this.anims.exists('sit-loop'))) return;
     this.seated = true;
     this.moveTarget = null;
     if (this.playingGuitar) this.stopGuitar();
     this.pos.u = DECK_CHAIR.seatU;
     this.pos.v = DECK_CHAIR.seatV;
     this.applyPosition();
+    this.playSound('interact', 0.4);
+
+    const settle = (loopKey: string) => {
+      if (!this.seated) return;
+      this.player.play(loopKey);
+      this.busyUntil = 0;
+      if (station) {
+        this.time.delayedCall(700, () => {
+          if (!this.seated) return;
+          this.cameras.main.flash(180, 40, 90, 120);
+          this.game.events.emit('arcade:open-section', station.section);
+        });
+      }
+    };
+
+    if (consoleChain) {
+      const manifest = this.registry.get('char-manifest') as CharacterManifest;
+      // The full take starts from standing; the seated variant needs the
+      // drop-in animation played ahead of it.
+      const first = sitConsoleIsFullTake(manifest) ? 'sit-console' : 'sit-down';
+      this.player.play(first);
+      this.busyUntil = this.time.now + this.animDuration(first);
+      this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
+        if (!this.seated) return;
+        if (first === 'sit-console') {
+          settle('sit-console-loop');
+        } else {
+          this.player.play('sit-console');
+          this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => settle('sit-console-loop'));
+        }
+      });
+      return;
+    }
+
     this.player.play('sit-down');
     this.busyUntil = this.time.now + this.animDuration('sit-down');
-    this.playSound('interact', 0.4);
     this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
       if (!this.seated) return;
-      const toScreen = () => {
-        if (!this.seated) return;
-        const seatedLoop = station && this.anims.exists('sit-screen') ? 'sit-screen' : 'sit-loop';
-        this.player.play(seatedLoop);
-        this.busyUntil = 0;
-        if (station) {
-          this.time.delayedCall(700, () => {
-            if (!this.seated) return;
-            this.playSound('chime', 0.4);
-            this.cameras.main.flash(180, 40, 90, 120);
-            this.game.events.emit('arcade:open-section', station.section);
-          });
-        }
-      };
-      // Recovered straight from PixelLab: he swivels the chair to the console.
-      if (this.anims.exists('sit-swivel')) {
-        this.player.play('sit-swivel');
-        this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, toScreen);
-      } else {
-        toScreen();
-      }
+      settle(station && this.anims.exists('sit-screen') ? 'sit-screen' : 'sit-loop');
     });
   }
 
@@ -646,6 +687,7 @@ export class DeckScene extends Phaser.Scene {
    * label directly is a deliberate shortcut and opens straight away.
    */
   private openSection(station: Station, immediate = false): void {
+    this.ensureMusic();
     if (this.busy()) return;
     if (this.playingGuitar) this.stopGuitar();
     this.moveTarget = null;
@@ -669,7 +711,7 @@ export class DeckScene extends Phaser.Scene {
     const loopKey = `screen-loop-${facing4}`;
     const key = this.anims.exists(startKey) ? startKey : `console-${facing4}`;
     if (immediate || !this.anims.exists(key)) {
-      this.playSound('chime', 0.4);
+      this.playSound('interact', 0.45);
       reveal();
       return;
     }
@@ -683,10 +725,7 @@ export class DeckScene extends Phaser.Scene {
     if (key === startKey && this.anims.exists(loopKey)) {
       this.player.once(Phaser.Animations.Events.ANIMATION_COMPLETE, () => this.player.play(loopKey));
     }
-    this.time.delayedCall(duration, () => {
-      this.playSound('chime', 0.4);
-      reveal();
-    });
+    this.time.delayedCall(duration, reveal);
   }
 
   private toCorridor(): void {
@@ -704,6 +743,7 @@ export class DeckScene extends Phaser.Scene {
     const seconds = delta / 1000;
     this.stars.tilePositionX += 2.4 * seconds;
     this.stars.tilePositionY -= 0.7 * seconds;
+    this.applyMusicVolumes();
 
     if (this.leaving) return;
 
@@ -741,6 +781,7 @@ export class DeckScene extends Phaser.Scene {
     if (k.down.isDown || k.s.isDown || vi.down) v += 1;
 
     if (h !== 0 || v !== 0) {
+      this.ensureMusic();
       this.moveTarget = null;
       if (this.playingGuitar) this.stopGuitar();
     } else if (this.moveTarget) {
@@ -827,25 +868,29 @@ export class DeckScene extends Phaser.Scene {
 
   private updateStations(): void {
     let nearest: Station | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
+    let bestRatio = Number.POSITIVE_INFINITY;
 
     for (const station of DECK_STATIONS) {
       const du = station.u - this.pos.u;
       const dv = (station.v - this.pos.v) * 1.6;
       const distance = Math.hypot(du, dv);
+      // Each station can set its own reach, so consoles that sit behind
+      // collision still open from the floor beside them.
+      const reach = station.reach ?? NEAR_STATION;
+      const ratio = distance / reach;
       const marker = this.markers.get(station.id);
       const label = this.labels.get(station.id);
-      const close = distance < NEAR_STATION * 2.4;
+      const close = ratio < 2.4;
       marker?.setStrokeStyle(close ? 2 : 0, station.color, 0.9);
       label?.setAlpha(close ? 1 : 0.72);
-      if (distance < bestDistance) {
-        bestDistance = distance;
+      if (ratio < bestRatio) {
+        bestRatio = ratio;
         nearest = station;
       }
     }
 
     const previous = this.activeStation;
-    this.activeStation = bestDistance < NEAR_STATION ? nearest : null;
+    this.activeStation = bestRatio < 1 ? nearest : null;
     if (previous?.id !== this.activeStation?.id) {
       if (previous) this.refreshStationLook(previous);
       if (this.activeStation) this.refreshStationLook(this.activeStation);

@@ -82,18 +82,29 @@ The lift is multiplied by his depth scale, so a jump at the front of the room is
 The Tool Forge station IS the chair (`sit: true` in `DECK_STATIONS`). Its
 geometry lives in `DECK_CHAIR` in the same file: where the crop came from in
 the room art, the screen y it y-sorts against, where he stands to be offered
-the seat, and where he sits. Pressing E there runs the full chain:
-`sit-down` &rarr; `sit-swivel` (he turns the chair to the console) &rarr;
-`sit-screen`, and the Skills panel arrives while he is still typing. E again
-stands him back up.
+the seat, and where he sits. Pressing E there plays `sit-console` (one
+continuous take: he sits down and brings the console up, facing north-east)
+into the `sit-console-loop`, and the Skills panel arrives while he is still
+working the pad. E again stands him back up.
 
 ## Controls
 
 WASD or arrows to walk (any keypress scrolls the game into view first),
-Space to flip on the deck and jump in the corridor, E or Enter to use, G to dance,
-R to summon or put away the guitar. In the hangar: arrows fly, Space fires,
-Q or ESC docks. Clicking a station label opens its section directly; clicking
-the floor does nothing on purpose.
+Space to flip on the deck and jump in the corridor, E or Enter to use, G to
+dance, R to summon or put away the guitar. In the hangar: arrows fly, Space
+charges the beam cannon (half a second spooling up, a sustained sweep you
+steer with the ship, then a recharge — the `BEAM` block in `FlightScene.ts`
+holds all three times), Q or ESC docks. Clicking a station label opens its
+section directly; clicking the floor does nothing on purpose.
+
+## Music and mute
+
+Nothing plays until the first deliberate input (a movement key, a click on
+the canvas, an action key); after that the room themes carry on until muted.
+The two floating toggles in the top-right corner (their own tiny scene,
+`AudioHudScene`) mute music and sound effects separately and remember the
+choice in localStorage. Opening a résumé panel pauses the game but leaves the
+music playing; hiding the game silences everything.
 
 ## Where the animations come from
 
