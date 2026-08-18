@@ -126,7 +126,7 @@ export function registerCharacterAnims(anims: Phaser.Animations.AnimationManager
   const sitConsoleClip = manifest.clips[CLIP_SIT_CONSOLE] ? CLIP_SIT_CONSOLE : CLIP_SIT_CONSOLE_START_SEATED;
   specs.push({ key: 'sit-console', clip: sitConsoleClip, frameRate: 12, repeat: 0 });
   specs.push({ key: 'sit-console-loop', clip: CLIP_SIT_CONSOLE_LOOP, frameRate: 10, repeat: -1 });
-  for (const facing of ['east', 'south', 'west']) {
+  for (const facing of ['north', 'east', 'south', 'west'] as Facing4[]) {
     specs.push({ key: `jump-still-${facing}`, clip: `hop-two-footed-jump-${facing}`, frameRate: 14, repeat: 0 });
   }
   for (const facing of ['north', 'east', 'south', 'west'] as Facing4[]) {

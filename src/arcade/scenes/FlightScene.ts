@@ -14,6 +14,10 @@ const BEAM = {
   cooldownMs: 3200,
 };
 
+const FLIGHT_THEME_VOLUME = 0.24;
+/** One dial over every effect, matching the deck. */
+const SFX_GAIN = 0.9;
+
 /** Layer scroll rates in pixels per second. Depth is sold by the spread. */
 const RATES = {
   sky: 6,
@@ -297,7 +301,7 @@ export class FlightScene extends Phaser.Scene {
   /** Plays a sound only if it made it into the bundle and SFX are on. */
   private playSfx(key: string, volume: number): void {
     if (this.registry.get(REG_SFX_ON) === false) return;
-    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
+    if (this.cache.audio.exists(key)) this.sound.play(key, { volume: volume * SFX_GAIN });
   }
 
   private startBeamCharge(): void {
@@ -362,7 +366,7 @@ export class FlightScene extends Phaser.Scene {
       this.sound.once(Phaser.Sound.Events.UNLOCKED, () => this.startTheme());
       return;
     }
-    this.theme = this.sound.add('flight-theme', { loop: true, volume: 0.34 });
+    this.theme = this.sound.add('flight-theme', { loop: true, volume: FLIGHT_THEME_VOLUME });
     this.theme.play();
   }
 
@@ -383,7 +387,7 @@ export class FlightScene extends Phaser.Scene {
 
     const musicOn = this.registry.get(REG_MUSIC_ON) !== false;
     const theme = this.theme as (Phaser.Sound.BaseSound & { setVolume?: (v: number) => void }) | undefined;
-    theme?.setVolume?.(musicOn ? 0.34 : 0);
+    theme?.setVolume?.(musicOn ? FLIGHT_THEME_VOLUME : 0);
 
     const boosting = k.boost.isDown;
     this.boostFactor = Phaser.Math.Linear(this.boostFactor, boosting ? 2.1 : 1, 0.08);

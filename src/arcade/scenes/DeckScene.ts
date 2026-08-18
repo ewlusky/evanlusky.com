@@ -27,6 +27,13 @@ const WALK_V = 0.42;
 const RUN_MULTIPLIER = 1.75;
 const NEAR_STATION = 0.16;
 
+/** Room tone, and how far it ducks under the guitar. */
+const DECK_THEME_VOLUME = 0.22;
+const DECK_THEME_DUCKED = 0.06;
+const GUITAR_VOLUME = 0.35;
+/** One dial over every effect, so "a touch quieter" stays a one-line change. */
+const SFX_GAIN = 0.9;
+
 /**
  * The jump arc. The animation does not lift him off the ground by itself, so
  * the scene lifts the sprite while the flip plays.
@@ -469,7 +476,7 @@ export class DeckScene extends Phaser.Scene {
       return;
     }
     if (this.theme?.isPlaying) return;
-    this.theme = this.sound.add('deck-theme', { loop: true, volume: 0.32 });
+    this.theme = this.sound.add('deck-theme', { loop: true, volume: DECK_THEME_VOLUME });
     this.theme.play();
   }
 
@@ -480,9 +487,9 @@ export class DeckScene extends Phaser.Scene {
    */
   private applyMusicVolumes(): void {
     const musicOn = this.registry.get(REG_MUSIC_ON) !== false;
-    this.setThemeVolume(musicOn ? (this.playingGuitar ? 0.08 : 0.32) : 0);
+    this.setThemeVolume(musicOn ? (this.playingGuitar ? DECK_THEME_DUCKED : DECK_THEME_VOLUME) : 0);
     const loop = this.guitarLoop as (Phaser.Sound.BaseSound & { setVolume?: (v: number) => void }) | undefined;
-    loop?.setVolume?.(musicOn ? 0.5 : 0);
+    loop?.setVolume?.(musicOn ? GUITAR_VOLUME : 0);
   }
 
   private busy(): boolean {
@@ -503,14 +510,15 @@ export class DeckScene extends Phaser.Scene {
     const facing4 = toFacing4(this.facing);
     let key: string;
     if (kind === 'flip') {
-      // Moving: the travelling flip. Standing still: a two-footed hop.
+      // The flip is only drawn side-on, so it belongs to sideways movement.
+      // Going up or down the room, and standing still, he jumps with both feet.
       const k = this.keys;
-      const moving =
-        k.left.isDown || k.a.isDown || k.right.isDown || k.d.isDown ||
-        k.up.isDown || k.w.isDown || k.down.isDown || k.s.isDown;
-      const flipFacing = facing4 === 'north' ? 'south' : facing4;
-      key = moving ? `flip-${flipFacing}` : `jump-still-${flipFacing}`;
-      if (!this.anims.exists(key)) key = `flip-${flipFacing}`;
+      const movingSideways =
+        k.left.isDown || k.a.isDown || k.right.isDown || k.d.isDown;
+      key = movingSideways && (facing4 === 'east' || facing4 === 'west')
+        ? `flip-${facing4}`
+        : `jump-still-${facing4}`;
+      if (!this.anims.exists(key)) key = `jump-still-${facing4}`;
     } else {
       key = 'dance';
       this.facing = 'south';
@@ -587,7 +595,7 @@ export class DeckScene extends Phaser.Scene {
   /** Plays a sound only if it made it into the bundle and SFX are on. */
   private playSound(key: string, volume: number): void {
     if (this.registry.get(REG_SFX_ON) === false) return;
-    if (this.cache.audio.exists(key)) this.sound.play(key, { volume });
+    if (this.cache.audio.exists(key)) this.sound.play(key, { volume: volume * SFX_GAIN });
   }
 
   private tryInteract(): void {
@@ -698,7 +706,11 @@ export class DeckScene extends Phaser.Scene {
     };
 
     // Turn toward the console he is actually using before the animation.
-    if (!immediate) {
+    // A pinned facing wins: for a station dead ahead or dead behind, standing
+    // a hair off centre would otherwise swing him east or west.
+    if (station.face) {
+      this.facing = station.face;
+    } else if (!immediate) {
       const du = station.u - this.pos.u;
       const dv = (station.v - this.pos.v) * 0.7;
       if (Math.abs(du) > 0.02 || Math.abs(dv) > 0.02) {

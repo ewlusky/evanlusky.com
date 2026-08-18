@@ -106,6 +106,12 @@ export interface Station {
   sit?: boolean;
   /** How far away E still works, in floor units. Defaults to the scene's standard. */
   reach?: number;
+  /**
+   * Pins the direction he turns to use it. Stations dead ahead or dead behind
+   * read badly from a vector, because standing a hair off centre swings the
+   * facing to east or west.
+   */
+  face?: 'north' | 'east' | 'south' | 'west';
 }
 
 /**
@@ -145,7 +151,8 @@ export function isBlocked(blockers: readonly Blocker[], u: number, v: number): b
 }
 
 export const DECK_STATIONS: Station[] = [
-  { id: 'profile', label: 'SIGNAL DESK', opens: 'About', section: 'about', u: 0, v: 0.2, color: 0x6fe7ff },
+  // Straight up the middle of the room: he always works it facing the back wall.
+  { id: 'profile', label: 'SIGNAL DESK', opens: 'About', section: 'about', u: 0, v: 0.2, color: 0x6fe7ff, face: 'north' },
   { id: 'experience', label: 'SYSTEMS CORE', opens: 'Experience', section: 'experience', u: -0.62, v: 0.22, color: 0xffc36a },
   // The pilot's chair IS the Tool Forge: he sits down at it to open Skills.
   { id: 'skills', label: 'TOOL FORGE', opens: 'Skills', section: 'skills', u: 0.72, v: 0.4, color: 0xb6a2ff, sit: true },
@@ -155,5 +162,6 @@ export const DECK_STATIONS: Station[] = [
   // The computer console to starboard of the chair. Its own blocker keeps him
   // on the floor beside it, so the reach spans that gap.
   { id: 'education', label: 'LEARNING SPIRE', opens: 'Education + research', section: 'education', u: 0.88, v: 0.58, color: 0xff9ecb, reach: 0.26 },
-  { id: 'contact', label: 'COMMS RELAY', opens: 'Contact', section: 'contact', u: 0, v: 0.95, color: 0xffe66e },
+  // At the very front of the deck: he always turns toward the camera for it.
+  { id: 'contact', label: 'COMMS RELAY', opens: 'Contact', section: 'contact', u: 0, v: 0.95, color: 0xffe66e, face: 'south' },
 ];
